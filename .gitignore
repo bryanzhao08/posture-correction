@@ -1,0 +1,33 @@
+# Secrets and local runtime data (database, JWT secret, outbox emails, uploaded keypoints)
+.env
+.env.*
+!.env.example
+backend/data/
+
+# Downloaded datasets, extracted poses, model files (large; GolfDB is CC BY-NC)
+ml/data/
+*.tflite
+*.task
+*.mp4
+*.avi
+*.zip
+
+# Python
+.venv/
+.venv-pose/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Xcode / Swift (the project file is generated from ios/project.yml by xcodegen)
+ios/*.xcodeproj/
+ios/**/.build/
+ios/**/.swiftpm/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.mobileprovision
+*.p12
+
+# macOS
+.DS_Store

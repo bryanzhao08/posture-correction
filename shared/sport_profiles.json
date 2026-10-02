@@ -1,0 +1,574 @@
+{
+  "version": 1,
+  "joints": [
+    "nose",
+    "l_shoulder",
+    "r_shoulder",
+    "l_elbow",
+    "r_elbow",
+    "l_wrist",
+    "r_wrist",
+    "l_hip",
+    "r_hip",
+    "l_knee",
+    "r_knee",
+    "l_ankle",
+    "r_ankle"
+  ],
+  "preprocess": {
+    "min_conf": 0.3,
+    "hold_s": 0.3,
+    "joint_tau_s": 0.04,
+    "speed_tau_s": 0.07,
+    "torso_tau_s": 1.0,
+    "no_person_s": 0.5,
+    "arm_after_s": 1.5,
+    "facing_tau_s": 3.0
+  },
+  "scoring": {
+    "z_scale": 2.0,
+    "form_weight": 0.85,
+    "consistency_weight": 0.15
+  },
+  "sports": {
+    "golf": {
+      "label": "Golf",
+      "analyzer": "golf",
+      "tracker": "hands_mid",
+      "camera": "Face-on: tripod at hip height, 3-4 m in front of you, lens pointing at your belt buckle.",
+      "detect": {
+        "rest_speed": 0.9,
+        "rest_ms": 300,
+        "enter_speed": 2.5,
+        "enter_ms": 60,
+        "exit_speed": 1.2,
+        "settle_ms": 280,
+        "max_lookback_s": 2.5,
+        "refractory_ms": 800,
+        "post_peak_s": 1.0
+      },
+      "gates": {
+        "min_peak_speed": 7.0,
+        "min_duration_s": 0.7,
+        "max_duration_s": 4.0,
+        "min_path_len": 4.0,
+        "min_vertical_range": 1.0,
+        "min_horizontal_range": 0.0,
+        "min_path_ratio": 1.8,
+        "start_hand_min_y": -0.5,
+        "peak_hand_max_y": -0.7
+      },
+      "metrics": [
+        {
+          "id": "tempo_ratio",
+          "label": "Tempo (backswing : downswing)",
+          "unit": "ratio",
+          "mean": 2.429,
+          "std": 0.637,
+          "tol": 0.319,
+          "weight": 0.5,
+          "source": "GolfDB pros (n=169)",
+          "cue_low": "Your backswing is rushed. Take the club back slower and smoother.",
+          "cue_high": "Your downswing is quick relative to a slow backswing. Keep one smooth rhythm."
+        },
+        {
+          "id": "lead_arm_top",
+          "label": "Lead arm at the top",
+          "unit": "deg",
+          "mean": 120.774,
+          "std": 22.726,
+          "tol": 11.363,
+          "weight": 0.5,
+          "source": "GolfDB pros (n=169)",
+          "cue_low": "Your lead arm is collapsing at the top. Keep it long and wide.",
+          "cue_high": ""
+        },
+        {
+          "id": "head_sway",
+          "label": "Head sway to impact",
+          "unit": "torso",
+          "mean": 0.199,
+          "std": 0.089,
+          "tol": 0.045,
+          "weight": 1.0,
+          "one_sided": "high",
+          "source": "GolfDB pros (n=169)",
+          "cue_low": "",
+          "cue_high": "Your head is drifting sideways. Keep it centred over the ball until impact."
+        },
+        {
+          "id": "head_lift",
+          "label": "Head height change at impact",
+          "unit": "torso",
+          "mean": 0.063,
+          "std": 0.101,
+          "tol": 0.051,
+          "weight": 0.8,
+          "source": "GolfDB pros (n=169)",
+          "cue_low": "You are standing up through impact. Stay in your posture.",
+          "cue_high": "You are dipping down into the ball. Keep your height level."
+        },
+        {
+          "id": "hip_sway",
+          "label": "Hip sway in backswing",
+          "unit": "torso",
+          "mean": 0.039,
+          "std": 0.041,
+          "tol": 0.021,
+          "weight": 0.8,
+          "one_sided": "high",
+          "source": "GolfDB pros (n=169)",
+          "cue_low": "",
+          "cue_high": "Your hips slide away from the target. Turn around your trail hip instead of swaying."
+        },
+        {
+          "id": "shoulder_turn",
+          "label": "Shoulder turn at the top",
+          "unit": "ratio",
+          "mean": 0.564,
+          "std": 0.166,
+          "tol": 0.083,
+          "weight": 0.8,
+          "one_sided": "high",
+          "source": "GolfDB pros (n=169)",
+          "cue_low": "",
+          "cue_high": "Your shoulder turn is short. Rotate your back to the target."
+        },
+        {
+          "id": "finish_balance",
+          "label": "Finish over lead foot",
+          "unit": "torso",
+          "mean": 0.183,
+          "std": 0.14,
+          "tol": 0.07,
+          "weight": 0.8,
+          "one_sided": "high",
+          "source": "GolfDB pros (n=169)",
+          "cue_low": "",
+          "cue_high": "You are finishing on your back foot. Get your weight onto your lead side."
+        }
+      ]
+    },
+    "basketball": {
+      "label": "Basketball shot",
+      "analyzer": "basketball",
+      "tracker": "dominant_wrist",
+      "camera": "Face-on: tripod at chest height, 3-5 m in front of you, on the line between you and the hoop.",
+      "detect": {
+        "rest_speed": 0.9,
+        "rest_ms": 200,
+        "enter_speed": 1.8,
+        "enter_ms": 60,
+        "exit_speed": 1.2,
+        "settle_ms": 250,
+        "max_lookback_s": 1.5,
+        "refractory_ms": 700,
+        "post_peak_s": 1.0
+      },
+      "gates": {
+        "min_peak_speed": 1.8,
+        "min_duration_s": 0.3,
+        "max_duration_s": 3.0,
+        "min_path_len": 1.5,
+        "min_vertical_range": 0.9,
+        "min_horizontal_range": 0.0,
+        "start_hand_min_y": -1.1,
+        "peak_hand_max_y": -1.5
+      },
+      "metrics": [
+        {
+          "id": "leg_drive",
+          "label": "Leg drive into the shot",
+          "unit": "torso",
+          "mean": 0.377,
+          "std": 0.109,
+          "tol": 0.054,
+          "weight": 1.0,
+          "one_sided": "low",
+          "source": "SPL free throws (n=396)",
+          "cue_low": "Use your legs. Dip and rise so the shot starts from the ground.",
+          "cue_high": ""
+        },
+        {
+          "id": "elbow_extension",
+          "label": "Elbow extension at release",
+          "unit": "deg",
+          "mean": 174.642,
+          "std": 8.732,
+          "tol": 4.366,
+          "weight": 1.2,
+          "one_sided": "low",
+          "source": "SPL free throws (n=396)",
+          "cue_low": "You are short-arming the release. Extend fully up through the ball.",
+          "cue_high": ""
+        },
+        {
+          "id": "elbow_flare",
+          "label": "Elbow flare at set point",
+          "unit": "shoulder widths",
+          "mean": 0.098,
+          "std": 0.1,
+          "tol": 0.05,
+          "weight": 1.2,
+          "one_sided": "high",
+          "source": "SPL free throws (n=396)",
+          "cue_low": "",
+          "cue_high": "Your elbow is flaring out. Tuck it under the ball, in line with your shoulder."
+        },
+        {
+          "id": "release_height",
+          "label": "Release height above shoulder",
+          "unit": "torso",
+          "mean": 1.031,
+          "std": 0.052,
+          "tol": 0.026,
+          "weight": 1.0,
+          "one_sided": "low",
+          "source": "SPL free throws (n=396)",
+          "cue_low": "You are releasing low. Shoot up, not out, and finish high.",
+          "cue_high": ""
+        },
+        {
+          "id": "arm_verticality",
+          "label": "Arm line at release",
+          "unit": "deg",
+          "mean": 5.639,
+          "std": 1.552,
+          "tol": 0.776,
+          "weight": 1.0,
+          "one_sided": "high",
+          "source": "SPL free throws (n=396)",
+          "cue_low": "",
+          "cue_high": "Your arm is finishing across your body. Finish straight toward the rim."
+        },
+        {
+          "id": "follow_through_hold",
+          "label": "Follow-through hold",
+          "unit": "s",
+          "mean": 0.366,
+          "std": 0.049,
+          "tol": 0.024,
+          "weight": 0.8,
+          "one_sided": "low",
+          "source": "SPL free throws (n=396)",
+          "cue_low": "Hold your follow-through until the ball reaches the rim.",
+          "cue_high": ""
+        },
+        {
+          "id": "lateral_drift",
+          "label": "Sideways drift",
+          "unit": "torso",
+          "mean": 0.075,
+          "std": 0.028,
+          "tol": 0.014,
+          "weight": 0.8,
+          "one_sided": "high",
+          "source": "SPL free throws (n=396)",
+          "cue_low": "",
+          "cue_high": "You are drifting sideways. Go straight up and land where you took off."
+        },
+        {
+          "id": "shot_rhythm",
+          "label": "Dip-to-release time",
+          "unit": "s",
+          "mean": 0.367,
+          "std": 0.049,
+          "tol": 0.024,
+          "weight": 0.6,
+          "source": "SPL free throws (n=396)",
+          "cue_low": "Your release is rushed after the dip. Let the legs finish first.",
+          "cue_high": "There is a hitch between your dip and your release. Make it one motion."
+        }
+      ],
+      "pattern": {
+        "max_load_elbow": 90.0,
+        "min_extension_speed": 400.0
+      }
+    },
+    "tennis": {
+      "label": "Tennis",
+      "analyzer": "racket",
+      "tracker": "dominant_wrist",
+      "camera": "Face-on: tripod at chest height, 4-6 m in front of you (behind the net or baseline, facing you).",
+      "detect": {
+        "rest_speed": 1.0,
+        "rest_ms": 150,
+        "enter_speed": 2.2,
+        "enter_ms": 50,
+        "exit_speed": 1.4,
+        "settle_ms": 500,
+        "max_lookback_s": 1.5,
+        "refractory_ms": 500,
+        "post_peak_s": 0.8
+      },
+      "gates": {
+        "min_peak_speed": 3.0,
+        "min_duration_s": 0.3,
+        "max_duration_s": 3.5,
+        "min_path_len": 1.5,
+        "min_vertical_range": 0.0,
+        "min_horizontal_range": 0.0,
+        "min_extent": 0.8,
+        "start_hand_min_y": -1.1
+      },
+      "metrics": [
+        {
+          "id": "stance_height",
+          "label": "Staying low while loading",
+          "unit": "torso",
+          "mean": 1.162,
+          "std": 0.115,
+          "tol": 0.057,
+          "weight": 1.0,
+          "one_sided": "high",
+          "source": "THETIS experts (n=97)",
+          "cue_low": "",
+          "cue_high": "Bend your knees more as you load. Power comes from the ground up."
+        },
+        {
+          "id": "contact_arm",
+          "label": "Arm extension at contact",
+          "unit": "deg",
+          "mean": 114.668,
+          "std": 60.876,
+          "tol": 30.438,
+          "weight": 1.0,
+          "source": "THETIS experts (n=79)",
+          "by_type": {
+            "serve": {
+              "mean": 170,
+              "std": 10,
+              "tol": 6
+            }
+          },
+          "cue_low": "Your arm is cramped at contact. Give yourself more space from the ball.",
+          "cue_high": ""
+        },
+        {
+          "id": "contact_height",
+          "label": "Contact height",
+          "unit": "torso",
+          "mean": -0.942,
+          "std": 0.344,
+          "tol": 0.172,
+          "weight": 0.8,
+          "source": "THETIS experts (n=80)",
+          "by_type": {
+            "serve": {
+              "mean": -2.0,
+              "std": 0.25,
+              "tol": 0.15
+            }
+          },
+          "cue_low": "You are meeting the ball too high. Let it drop into your strike zone.",
+          "cue_high": "You are meeting the ball too low. Get under it with your legs, or reach up fully on serve."
+        },
+        {
+          "id": "swing_through",
+          "label": "Swing through the ball",
+          "unit": "torso",
+          "mean": 1.766,
+          "std": 0.501,
+          "tol": 0.251,
+          "weight": 1.0,
+          "one_sided": "low",
+          "source": "THETIS experts (n=80)",
+          "by_type": {
+            "serve": null
+          },
+          "cue_low": "You are cutting your swing short. Finish across your body.",
+          "cue_high": ""
+        },
+        {
+          "id": "shoulder_turn",
+          "label": "Unit turn",
+          "unit": "ratio",
+          "mean": 0.154,
+          "std": 0.142,
+          "tol": 0.071,
+          "weight": 1.0,
+          "one_sided": "high",
+          "source": "THETIS experts (n=80)",
+          "by_type": {
+            "serve": null
+          },
+          "cue_low": "",
+          "cue_high": "Turn your shoulders earlier and further. Prepare with a full unit turn."
+        },
+        {
+          "id": "head_stability",
+          "label": "Head stability into contact",
+          "unit": "torso",
+          "mean": 0.235,
+          "std": 0.172,
+          "tol": 0.086,
+          "weight": 0.8,
+          "one_sided": "high",
+          "source": "THETIS experts (n=97)",
+          "cue_low": "",
+          "cue_high": "Your head is moving through the hit. Keep your eyes at the contact point."
+        },
+        {
+          "id": "swing_tempo",
+          "label": "Backswing-to-contact time",
+          "unit": "s",
+          "mean": 0.5,
+          "std": 0.412,
+          "tol": 0.206,
+          "weight": 0.5,
+          "source": "THETIS experts (n=97)",
+          "cue_low": "You are snatching at the ball. Smooth acceleration beats a late rush.",
+          "cue_high": "Your forward swing is slow. Accelerate through contact."
+        }
+      ],
+      "pattern": {
+        "min_sweep": 0.6,
+        "min_overhead_drop": 1.0,
+        "min_cross": 0.1
+      }
+    },
+    "pickleball": {
+      "label": "Pickleball",
+      "analyzer": "racket",
+      "tracker": "dominant_wrist",
+      "camera": "Face-on: tripod at chest height, 3-5 m in front of you (at or behind the net, facing you).",
+      "detect": {
+        "rest_speed": 0.9,
+        "rest_ms": 120,
+        "enter_speed": 2.0,
+        "enter_ms": 50,
+        "exit_speed": 1.3,
+        "settle_ms": 300,
+        "max_lookback_s": 1.0,
+        "refractory_ms": 350,
+        "post_peak_s": 0.6
+      },
+      "gates": {
+        "min_peak_speed": 2.8,
+        "min_duration_s": 0.2,
+        "max_duration_s": 2.5,
+        "min_path_len": 1.0,
+        "min_vertical_range": 0.0,
+        "min_horizontal_range": 0.0,
+        "min_extent": 0.5,
+        "start_hand_min_y": -1.1
+      },
+      "metrics": [
+        {
+          "id": "stance_height",
+          "label": "Staying low",
+          "unit": "torso",
+          "mean": 1.45,
+          "std": 0.15,
+          "tol": 0.08,
+          "weight": 1.0,
+          "one_sided": "high",
+          "source": "prior",
+          "cue_low": "",
+          "cue_high": "Stay lower. Bend your knees instead of bending at the waist."
+        },
+        {
+          "id": "ready_height",
+          "label": "Paddle-up ready position",
+          "unit": "torso",
+          "mean": -0.45,
+          "std": 0.25,
+          "tol": 0.15,
+          "weight": 1.0,
+          "one_sided": "high",
+          "source": "prior",
+          "cue_low": "",
+          "cue_high": "Your paddle is dropping between shots. Keep it up at chest height."
+        },
+        {
+          "id": "backswing_size",
+          "label": "Compact backswing",
+          "unit": "torso",
+          "mean": 0.9,
+          "std": 0.3,
+          "tol": 0.15,
+          "weight": 1.2,
+          "one_sided": "high",
+          "source": "prior",
+          "by_type": {
+            "overhead": null
+          },
+          "cue_low": "",
+          "cue_high": "Your backswing is too big. Keep the paddle in front of your body."
+        },
+        {
+          "id": "contact_arm",
+          "label": "Arm extension at contact",
+          "unit": "deg",
+          "mean": 145,
+          "std": 20,
+          "tol": 10,
+          "weight": 0.8,
+          "source": "prior",
+          "by_type": {
+            "overhead": {
+              "mean": 168,
+              "std": 10,
+              "tol": 6
+            }
+          },
+          "cue_low": "You are jammed at contact. Meet the ball out in front.",
+          "cue_high": ""
+        },
+        {
+          "id": "contact_height",
+          "label": "Contact height",
+          "unit": "torso",
+          "mean": -0.25,
+          "std": 0.35,
+          "tol": 0.2,
+          "weight": 0.6,
+          "source": "prior",
+          "by_type": {
+            "overhead": {
+              "mean": -1.9,
+              "std": 0.3,
+              "tol": 0.15
+            }
+          },
+          "cue_low": "You are reaching up for balls you could let drop.",
+          "cue_high": "You are hitting from too low. Bend and lift with your legs."
+        },
+        {
+          "id": "swing_through",
+          "label": "Follow-through",
+          "unit": "torso",
+          "mean": 1.4,
+          "std": 0.5,
+          "tol": 0.25,
+          "weight": 0.8,
+          "one_sided": "low",
+          "source": "prior",
+          "by_type": {
+            "overhead": null
+          },
+          "cue_low": "You are stabbing at the ball. Push through toward your target.",
+          "cue_high": ""
+        },
+        {
+          "id": "head_stability",
+          "label": "Head stability into contact",
+          "unit": "torso",
+          "mean": 0.15,
+          "std": 0.12,
+          "tol": 0.08,
+          "weight": 0.8,
+          "one_sided": "high",
+          "source": "prior",
+          "cue_low": "",
+          "cue_high": "Keep your head still and watch the ball onto the paddle."
+        }
+      ],
+      "pattern": {
+        "min_sweep": 0.4,
+        "min_overhead_drop": 0.8,
+        "min_cross": 0.0
+      }
+    }
+  }
+}
