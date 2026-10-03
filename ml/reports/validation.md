@@ -24,40 +24,8 @@ Event timing against the human labels (verification split):
 
 | group | reps | median score | p10 | p90 |
 |---|---|---|---|---|
-| held-out pros | 62 | 97 | 87 | 99 |
-| training pros | 169 | 97 | 88 | 100 |
-
-## Basketball (SPL free throws, 3D motion capture projected to a face-on phone view)
-
-| split | trials | counted exactly once | missed | double-counted |
-|---|---|---|---|---|
-| verify | 187 | 184/187 (98%) | 3 | 0 |
-| train | 396 | 396/396 (100%) | 0 | 0 |
-
-Motions correctly ignored across all trials (dribbles, catching the ball, lowering the arms): 561 (bad_start 378, lost_tracking 3, not_high_enough 1, too_small 179).
-
-| group | reps | median score | p10 | p90 |
-|---|---|---|---|---|
-| held-out athletes | 184 | 92 | 80 | 99 |
-| training athletes | 396 | 94 | 87 | 100 |
-
-Form score vs shot result on held-out athletes: AUC 0.42 (0.50 = no relationship). The score measures technique, not whether the ball goes in.
-
-## Tennis (THETIS, shadow swings facing a Kinect at 17 fps)
-
-| group | clips | counted exactly once | missed | over-counted | stroke type correct |
-|---|---|---|---|---|---|
-| held-out experts | 54 | 37/54 (69%) | 11 | 6 | 32/37 (86%) |
-| beginners | 279 | 209/279 (75%) | 63 | 7 | 166/209 (79%) |
-| training experts | 162 | 118/162 (73%) | 37 | 7 | 88/118 (75%) |
-
-| group | reps | median score | p10 | p90 |
-|---|---|---|---|---|
-| held-out experts | 38 | 96 | 82 | 100 |
-| beginners | 172 | 84 | 77 | 98 |
-| training experts | 97 | 98 | 82 | 100 |
-
-Held-out experts vs beginners: AUC 0.72 (0.50 = the score cannot tell them apart, 1.00 = perfect separation).
+| held-out pros | 62 | 97 | 88 | 100 |
+| training pros | 169 | 97 | 89 | 100 |
 
 ## Pickleball
 

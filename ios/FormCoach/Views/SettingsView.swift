@@ -13,6 +13,7 @@ struct SettingsView: View {
     @State private var message: String?
     @State private var error: String?
     #if DEBUG
+    @AppStorage("debugReplayDemoSession") private var replayDemoSession = false
     @State private var backend = ""
     #endif
     var body: some View {
@@ -55,6 +56,11 @@ struct SettingsView: View {
                     }.disabled(state.isSyncing || busy)
                 }
                 #if DEBUG
+                Section {
+                    Toggle("Replay demo session", isOn: $replayDemoSession)
+                } header: { Text("Development session source") } footer: {
+                    Text("Uses recorded demo poses instead of the camera for new sessions. The Simulator always uses replay.")
+                }
                 Section("Development backend") {
                     TextField("Backend URL", text: $backend).keyboardType(.URL)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()

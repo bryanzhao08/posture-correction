@@ -27,12 +27,15 @@ def _fmt_num(val, decimals=2):
     except (ValueError, TypeError):
         return "-"
 
+def _with_unit(num_str, unit):
+    return num_str if num_str == "-" or not unit else f"{num_str} {unit}"
+
 def _format_metric_table_html(metrics, include_previous=True):
     rows = []
     for m in metrics:
         val_str = _fmt_num(m.get('value'), 2)
         prev_str = _fmt_num(m.get('previous'), 2)
-        pro_str = _escape(m.get('pro'))
+        pro_str = _fmt_num(m.get('pro'), 2)
         unit_str = _escape(m.get('unit'))
         direction = m.get('direction')
         
@@ -42,14 +45,14 @@ def _format_metric_table_html(metrics, include_previous=True):
         elif direction == "worse":
             marker = " (Worse)"
         
-        prev_cell = f"<td style='padding: 8px; border-bottom: 1px solid #ddd;'>{prev_str} {unit_str}</td>" if include_previous else ""
+        prev_cell = f"<td style='padding: 8px; border-bottom: 1px solid #ddd;'>{_with_unit(prev_str, unit_str)}</td>" if include_previous else ""
         
         row = f"""
         <tr>
             <td style='padding: 8px; border-bottom: 1px solid #ddd;'>{_escape(m.get('label'))}</td>
-            <td style='padding: 8px; border-bottom: 1px solid #ddd;'>{val_str} {unit_str}{marker}</td>
+            <td style='padding: 8px; border-bottom: 1px solid #ddd;'>{_with_unit(val_str, unit_str)}{marker}</td>
             {prev_cell}
-            <td style='padding: 8px; border-bottom: 1px solid #ddd;'>{pro_str} {unit_str}</td>
+            <td style='padding: 8px; border-bottom: 1px solid #ddd;'>{_with_unit(pro_str, unit_str)}</td>
         </tr>
         """
         rows.append(row)
@@ -77,7 +80,7 @@ def _format_metric_table_text(metrics, include_previous=True):
     for m in metrics:
         val_str = _fmt_num(m.get('value'), 2)
         prev_str = _fmt_num(m.get('previous'), 2)
-        pro_str = str(m.get('pro', '-'))
+        pro_str = _fmt_num(m.get('pro'), 2)
         unit_str = str(m.get('unit', ''))
         direction = m.get('direction')
         
@@ -87,9 +90,9 @@ def _format_metric_table_text(metrics, include_previous=True):
         elif direction == "worse":
             marker = " (Worse)"
             
-        line = f"- {m.get('label')}: {val_str} {unit_str}{marker} | Pro: {pro_str} {unit_str}"
+        line = f"- {m.get('label')}: {_with_unit(val_str, unit_str)}{marker} | Pro: {_with_unit(pro_str, unit_str)}"
         if include_previous:
-            line += f" | Prev: {prev_str} {unit_str}"
+            line += f" | Prev: {_with_unit(prev_str, unit_str)}"
         lines.append(line)
     return "\n".join(lines)
 

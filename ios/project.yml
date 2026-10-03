@@ -18,6 +18,11 @@ targets:
       - path: FormCoach
         excludes:
           - README.md
+          - .verification
+          - DebugFixtures
+      # Fixtures may ship as resources, but replay code and settings exist only in DEBUG.
+      - path: FormCoach/DebugFixtures
+        buildPhase: resources
       - path: ../shared/sport_profiles.json
         buildPhase: resources
     dependencies:
@@ -36,3 +41,16 @@ targets:
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
     scheme:
       gatherCoverageData: false
+      testTargets:
+        - FormCoachUITests
+  FormCoachUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: FormCoachUITests
+    dependencies:
+      - target: FormCoach
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.formcoach.app.uitests
+        GENERATE_INFOPLIST_FILE: YES

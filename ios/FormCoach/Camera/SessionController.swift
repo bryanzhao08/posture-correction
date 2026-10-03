@@ -28,15 +28,35 @@ final class SessionController: ObservableObject {
     @Published var spokenCues: Bool
     @Published private(set) var isFinished = false
     @Published private(set) var cameraDenied = false
+    #if DEBUG
+    @Published private(set) var replayFinished = false
+    #endif
+    var isReplaying: Bool {
+        #if DEBUG
+        return camera.isReplaying
+        #else
+        return false
+        #endif
+    }
 
     init(profiles: Profiles, sport: Sport, profile: SportProfile, handedness: Handedness,
          spokenCues: Bool, sharePose: Bool) {
         self.sport = sport
         self.profile = profile
-        self.handedness = handedness
         self.spokenCues = spokenCues
         jointNames = profiles.joints
         camera = CameraManager(profiles: profiles, sport: sport.rawValue, handedness: handedness, collectPose: sharePose)
+        #if DEBUG
+        self.handedness = camera.isReplaying ? camera.replayHandedness : handedness
+        camera.onReplayFinished = { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self = self, !self.isFinished, !self.disposed else { return }
+                self.replayFinished = true
+            }
+        }
+        #else
+        self.handedness = handedness
+        #endif
         camera.onFrame = { [weak self] frame in
             Task { @MainActor [weak self] in
                 guard let self = self, !self.isFinished, !self.finishing else { return }
@@ -51,6 +71,9 @@ final class SessionController: ObservableObject {
     func start() async {
         guard !requestedStart, !isFinished, !disposed else { return }
         requestedStart = true
+        #if DEBUG
+        if isReplaying { activateSource(); return }
+        #endif
         let allowed: Bool
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized: allowed = true
@@ -63,6 +86,9 @@ final class SessionController: ObservableObject {
             error = "Camera access is required. Enable it in iPhone Settings to track your practice."
             return
         }
+        activateSource()
+    }
+    private func activateSource() {
         previousIdleTimerDisabled = UIApplication.shared.isIdleTimerDisabled
         UIApplication.shared.isIdleTimerDisabled = true
         awake = true

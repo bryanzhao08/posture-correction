@@ -10,9 +10,11 @@ Select a signing team for `com.formcoach.app` and build the FormCoach scheme on 
 iPhone running iOS 17 or newer. Swift language mode is 5.0. FormCore is a local package and
 `shared/sport_profiles.json` is a resource in the app bundle. No external libraries are used.
 
-**This app is uncompiled and has not been run.** Xcode and the iOS SDK are unavailable on the
-implementation machine. Do not interpret source review or JSON/plist validation as a build.
-Project generation was also not run: its generated files would be outside the assigned paths.
+The app now type-checks with **0 errors** in DEBUG and release mode for both arm64 device and
+arm64 Simulator, targeting iOS 17 with the iOS 26.2 SDK. Existing Swift 6 concurrency warnings
+remain in Swift 5 mode. XcodeGen project generation and fixture resource references were verified.
+The full application has not been built or launched in the Simulator; that end-to-end test remains
+with the delegating agent when the Simulator platform/runtime download completes.
 
 ## Operation
 
@@ -66,17 +68,43 @@ Project generation was also not run: its generated files would be outside the as
    sport/type-specific target treatment remains in FormCore scoring and server comparisons.
 6. System sound 1057 is used for rep feedback; physical-device audibility must be verified.
 
-## Unverified compile and runtime areas
+## DEBUG demo replay
 
-FormCore Models.swift and Package.swift were present during review, but FormEngine was not yet
-implemented by the parallel owner. The app intentionally uses its contracted interface rather than
-adding a replacement. Integration requires that implementation.
+In the Simulator, a DEBUG session always uses the sport's bundled demo. On a device, enable
+Settings → Development session source → **Replay demo session** (or replay is selected if the
+front camera is unavailable). This setting is immediate and applies to the next session.
 
-No known app-source error remains after review, but every Swift source is uncompiled. Highest-priority
-build checks are MainActor SwiftUI/UIViewRepresentable conformance and StateObject initializers,
-ViewBuilder generic summary sections and Charts conditional mark inference, Vision observation
-and recognized-point types, AVCaptureConnection rotation/mirroring APIs, and Data writing protection
-options. Also verify XcodeGen local package/resource resolution and the universal iOS app icon.
+Replay never requests camera access or starts capture/CoreMotion. It draws the normal skeleton
+on a dark background, treats uprightness as passing, and otherwise uses the same
+`PoseSessionPipeline` as camera frames: framing check, countdown, FormEngine events, HUD,
+haptics/speech, summary, local save and uploads. Fixture handedness is used consistently in the
+engine and uploaded session/recording rather than analyzing right-handed demos as left-handed.
+
+The source holds the initial pose for a three-second setup pre-roll because the recordings start
+moving about two seconds in. These setup-only samples precede the fixture timebase; every actual
+fixture frame keeps its original `t`. A timer runs on the capture serial queue and catches up
+without dropping poses. At EOF it cancels the timer, keeps the last frame visible, and shows
+“Demo complete · tap End session.” Ending early cancels playback and saves completed reps normally.
+
+`ReplayDemoSource` and the setting are compiled only under `#if DEBUG`. The JSON fixtures are
+bundled in all configurations (the brief permits this); release code never references them.
+Camera permissions, motion checks and live-session processing retain their prior release behavior.
+
+## Verification and remaining runtime checks
+
+- Type-checked all app Swift sources with `-D DEBUG` and without it for arm64 iOS device and
+  arm64 Simulator, using separately built matching FormCore modules: **0 errors in all four checks**.
+- Generated the XcodeGen project inside a temporary directory in the assigned app path and
+  checked that all four demo JSON files appear in Copy Bundle Resources and DEBUG is configured.
+- Compiled the actual `ReplayDemoSource`, shared pipeline and FormCore into a native verification
+  executable. Played all four fixtures concurrently in real time on a serial queue. Checked
+  countdown 3/2/1, original timestamps, all recorded frames reaching the opt-in recording,
+  matching rep events and last HUD/frame state, and real-time duration (within 0.5 seconds).
+  Results: golf **3 swings**, basketball **2 shots**, tennis **forehand + backhand + serve**,
+  pickleball **2 forehands**. Temporary verification outputs were removed after checking.
+- Full app login → replay → summary → backend upload → history remains to be tested in the
+  Simulator. The native replay test verifies the actual source/pipeline, not SwiftUI presentation,
+  Keychain, networking or physical haptics.
 
 On-device checks needed: preview/skeleton alignment on front and back cameras; permissions and
 local-network/ATS access; countdown reset on bad framing; engine transitions and idle rejection;
@@ -96,6 +124,6 @@ API choices were checked against the official references:
 Parsed project.yml with Ruby YAML and checked deployment, language mode, local-package and
 resource entries. `plutil -lint` passed for Info.plist. Parsed every asset JSON, verified the icon
 is opaque RGB at 1024×1024 and inspected it visually, checked shared joint/sport mapping, and
-ran a simple delimiter scan of the 18 Swift sources. Reviewed all source files, token persistence
-and explicit CodingKeys. These checks do not validate Swift syntax, types, project generation,
-layout or runtime behavior.
+ran a simple delimiter scan of the original 18 Swift sources. Reviewed source files, token
+persistence and explicit CodingKeys. The later replay task added the type-check/project-generation
+and real-time verification above; visual layout and full app runtime checks are still outstanding.

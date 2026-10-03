@@ -120,6 +120,17 @@ cd backend && ../.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 iOS: see [`docs/XCODE_DEPLOY.md`](docs/XCODE_DEPLOY.md) (`brew install xcodegen`, `cd ios && xcodegen generate`).
 
+End-to-end test in the Simulator (with the backend running on port 8000). The Simulator has no
+camera, so DEBUG builds replay a recorded session through the same pipeline:
+
+```bash
+cd ios && xcodebuild test -project FormCoach.xcodeproj -scheme FormCoach \
+  -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+```
+
+Swift engine parity with the Python reference: `python -m pytest ml/tests/test_parity.py`
+(builds `ios/FormCore` and compares every rep, metric and score).
+
 Reproduce the training and verification batches (downloads about 2 GB of datasets; see
 `ml/datasets.py` for sources): download into `ml/data/`, run `extract_pose.py` with the CPU pose
 environment (`mediapipe==0.10.14`), then `python ml/fit_reference.py && python ml/validate.py`.

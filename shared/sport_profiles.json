@@ -81,7 +81,9 @@
           "weight": 0.5,
           "source": "GolfDB pros (n=169)",
           "cue_low": "Your lead arm is collapsing at the top. Keep it long and wide.",
-          "cue_high": ""
+          "cue_high": "",
+          "one_sided": "low",
+          "note": "2D pose under-reads a straight arm; only arms more bent than the pros are penalised"
         },
         {
           "id": "head_sway",

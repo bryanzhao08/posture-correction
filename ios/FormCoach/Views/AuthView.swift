@@ -13,6 +13,15 @@ struct AuthView: View {
     @State private var showBackend = false
     @State private var backend = ""
     #endif
+        // UI tests in the Simulator: the strong-password autofill overlay steals focus from SecureField.
+    private static var uiTesting: Bool {
+        #if DEBUG
+        return ProcessInfo.processInfo.arguments.contains("-uiTesting")
+        #else
+        return false
+        #endif
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -20,6 +29,7 @@ struct AuthView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Image(systemName: "figure.golf").font(.system(size: 48)).foregroundStyle(.tint).accessibilityHidden(true)
                         Text("Make every rep count.").font(.largeTitle.bold())
+                            .fixedSize(horizontal: false, vertical: true)
                         Text("Live form coaching for golf, basketball, tennis and pickleball. Place your phone on a tripod and practise.")
                             .foregroundStyle(.secondary)
                     }.padding(.vertical, 16)
@@ -35,8 +45,13 @@ struct AuthView: View {
                     TextField("Email", text: $email)
                         .textContentType(.emailAddress).keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    SecureField("Password", text: $password)
-                        .textContentType(register ? .newPassword : .password)
+                    if Self.uiTesting {
+                        TextField("Password", text: $password)
+                            .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    } else {
+                        SecureField("Password", text: $password)
+                            .textContentType(register ? .newPassword : .password)
+                    }
                     if register { Text("Use at least 8 characters.").font(.caption).foregroundStyle(.secondary) }
                     if let error = error { ErrorNotice(message: error) }
                     Button {

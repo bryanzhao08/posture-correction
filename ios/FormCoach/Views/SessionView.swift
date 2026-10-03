@@ -45,8 +45,10 @@ struct SessionView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            CameraPreview(session: controller.camera.captureSession, mirrored: controller.frame?.mirrored ?? true)
-                .ignoresSafeArea()
+            if !controller.isReplaying {
+                CameraPreview(session: controller.camera.captureSession, mirrored: controller.frame?.mirrored ?? true)
+                    .ignoresSafeArea()
+            }
             if let frame = controller.frame {
                 SkeletonOverlay(joints: frame.joints, names: controller.jointNames, aspect: frame.aspect, mirrored: frame.mirrored)
                     .ignoresSafeArea()
@@ -57,10 +59,19 @@ struct SessionView: View {
                         HStack {
                             Text(controller.profile.label).font(.title2.bold())
                             Spacer()
-                            Button { controller.camera.switchCamera() } label: {
-                                Image(systemName: "arrow.triangle.2.circlepath.camera").font(.title2).frame(width: 52, height: 52)
-                            }.accessibilityLabel("Switch front or back camera")
-                                .disabled(controller.frame?.engineState == .active || controller.isFinished)
+                            #if DEBUG
+                            if controller.isReplaying {
+                                Text(controller.replayFinished ? "Demo complete · tap End session" : "Demo replay")
+                                    .font(.caption.bold()).multilineTextAlignment(.trailing)
+                                    .padding(12).background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 12))
+                            }
+                            #endif
+                            if !controller.isReplaying {
+                                Button { controller.camera.switchCamera() } label: {
+                                    Image(systemName: "arrow.triangle.2.circlepath.camera").font(.title2).frame(width: 52, height: 52)
+                                }.accessibilityLabel("Switch front or back camera")
+                                    .disabled(controller.frame?.engineState == .active || controller.isFinished)
+                            }
                         }
                         HStack(spacing: 16) {
                             Text(controller.stateLabel).font(.title.bold()).padding(.horizontal, 20).padding(.vertical, 12)
@@ -92,7 +103,9 @@ struct SessionView: View {
                                     Text(controller.frame?.setupMessage ?? "Stand in view with your face and both feet visible.")
                                         .font(.title2.bold()).multilineTextAlignment(.center)
                                 }
-                                Text("After switching cameras, the setup check starts again.").font(.footnote)
+                                if !controller.isReplaying {
+                                    Text("After switching cameras, the setup check starts again.").font(.footnote)
+                                }
                             }.padding(24).frame(maxWidth: .infinity).background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 24))
                         }
                         if let error = saveError ?? controller.error { ErrorNotice(message: error) }

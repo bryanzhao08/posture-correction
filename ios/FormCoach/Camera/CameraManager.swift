@@ -2,24 +2,6 @@ import AVFoundation
 import CoreMotion
 import FormCore
 
-struct CameraFrameState {
-    let joints: [JointObservation?]
-    let aspect: Double
-    let mirrored: Bool
-    let setupMessage: String?
-    let countdown: Int?
-    let started: Bool
-    let engineState: EngineState
-    let repCount: Int
-    let lastRep: Rep?
-    let countedReps: [Rep]
-}
-struct SessionCapture {
-    let summary: SessionSummary
-    let reps: [Rep]
-    let recording: Recording?
-}
-
 // Capture configuration, Vision, setup gating, FormEngine and snapshots share one serial queue.
 final class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     let captureSession = AVCaptureSession()
@@ -27,40 +9,64 @@ final class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
     var onFrame: ((CameraFrameState) -> Void)?
     var onError: ((String) -> Void)?
     private let detector: PoseDetector
-    private let engine: FormEngine
-    private let sport: String
-    private let handedness: Handedness
-    private let jointNames: [String]
+    private let pipeline: PoseSessionPipeline
     private let motion = CMMotionManager()
     private let motionQueue = OperationQueue()
-    private var upright = false
     private var position: AVCaptureDevice.Position = .front
     private var input: AVCaptureDeviceInput?
     private let output = AVCaptureVideoDataOutput()
     private var configured = false
     private var stopped = false
-    private var countingStarted = false
-    private var hasStartedCounting = false
-    private var setupSince: Double?
-    private var aspect = 9.0 / 16.0
-    private var lastRep: Rep?
-    private var frames: [PoseFrame] = []
-    private let collectPose: Bool
     private var visionFailed = false
+    private let jointCount: Int
+    #if DEBUG
+    let isReplaying: Bool
+    let replayHandedness: Handedness
+    private let replaySport: String
+    private var replay: ReplayDemoSource?
+    var onReplayFinished: (() -> Void)?
+    #endif
 
     init(profiles: Profiles, sport: String, handedness: Handedness, collectPose: Bool) {
-        self.sport = sport
-        self.handedness = handedness
-        jointNames = profiles.joints
         detector = PoseDetector(jointNames: profiles.joints)
-        engine = FormEngine(profiles: profiles, sport: sport, handedness: handedness)
-        self.collectPose = collectPose
+        jointCount = profiles.joints.count
+        #if DEBUG
+        isReplaying = ReplayDemoSource.shouldReplay
+        replayHandedness = isReplaying ? (ReplayDemoSource.fixtureHandedness(sport: sport) ?? handedness) : handedness
+        #endif
+        let engineHandedness: Handedness
+        #if DEBUG
+        engineHandedness = isReplaying ? replayHandedness : handedness
+        #else
+        engineHandedness = handedness
+        #endif
+        pipeline = PoseSessionPipeline(profiles: profiles, sport: sport, handedness: engineHandedness, collectPose: collectPose)
+        #if DEBUG
+        replaySport = sport
+        #endif
         super.init()
         motionQueue.maxConcurrentOperationCount = 1
     }
     func start() {
         queue.async { [weak self] in
             guard let self = self, !self.stopped else { return }
+            #if DEBUG
+            if self.isReplaying {
+                do {
+                    let recording = try ReplayDemoRecording.load(sport: self.replaySport, jointCount: self.jointCount)
+                    self.pipeline.upright = true
+                    let source = ReplayDemoSource(recording: recording, queue: self.queue)
+                    source.onFrame = { [weak self] t, joints, aspect in
+                        guard let self = self, !self.stopped else { return }
+                        self.onFrame?(self.pipeline.processFrame(t: t, joints: joints, aspect: aspect, mirrored: true))
+                    }
+                    source.onFinished = { [weak self] in self?.onReplayFinished?() }
+                    self.replay = source
+                    source.start()
+                } catch { self.onError?(error.localizedDescription) }
+                return
+            }
+            #endif
             do {
                 if !self.configured { try self.configure() }
                 self.startMotion()
@@ -102,7 +108,7 @@ final class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
     }
     func switchCamera() {
         queue.async { [weak self] in
-            guard let self = self, self.configured, !self.stopped, self.engine.state != .active else { return }
+            guard let self = self, self.configured, !self.stopped, self.pipeline.engineState != .active else { return }
             let next: AVCaptureDevice.Position = self.position == .front ? .back : .front
             do {
                 let replacement = try self.cameraInput(next)
@@ -119,8 +125,7 @@ final class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
                 do { try self.orientOutput() }
                 catch { self.captureSession.commitConfiguration(); throw error }
                 self.captureSession.commitConfiguration()
-                self.setupSince = nil
-                self.countingStarted = false
+                self.pipeline.resetSetup()
             } catch { self.onError?(error.localizedDescription) }
         }
     }
@@ -136,7 +141,7 @@ final class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
                 $0.gravity.y < -0.8 && abs($0.gravity.x) < 0.25 && abs($0.gravity.z) < 0.55
             } ?? false
             self.queue.async {
-                self.upright = valid
+                self.pipeline.upright = valid
                 if let error = error { self.onError?(error.localizedDescription) }
             }
         }
@@ -147,59 +152,15 @@ final class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
         autoreleasepool {
             let t = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sampleBuffer))
             guard t.isFinite else { return }
-            aspect = Double(CVPixelBufferGetWidth(buffer)) / Double(CVPixelBufferGetHeight(buffer))
+            let aspect = Double(CVPixelBufferGetWidth(buffer)) / Double(CVPixelBufferGetHeight(buffer))
             let joints: [JointObservation?]
             do { joints = try detector.detect(buffer); visionFailed = false }
             catch {
-                joints = Array(repeating: nil, count: jointNames.count)
+                joints = Array(repeating: nil, count: jointCount)
                 if !visionFailed { onError?("Body tracking failed: " + error.localizedDescription); visionFailed = true }
             }
-            let setup = setupMessage(joints)
-            var countdown: Int?
-            if !countingStarted {
-                if setup == nil {
-                    if setupSince == nil { setupSince = t }
-                    let elapsed = t - (setupSince ?? t)
-                    if elapsed >= 3 { countingStarted = true; hasStartedCounting = true }
-                    else { countdown = max(1, 3 - Int(elapsed)) }
-                } else { setupSince = nil }
-            }
-            var counted: [Rep] = []
-            if countingStarted {
-                if collectPose {
-                    frames.append(PoseFrame(t: t, j: joints.map { joint in
-                        joint.map { [$0.x, $0.y, $0.confidence] } ?? [0, 0, 0]
-                    }))
-                }
-            }
-            if hasStartedCounting {
-                // During a camera switch setup check, missing observations disarm the engine using real frame time.
-                let engineJoints = countingStarted ? joints : Array<JointObservation?>(repeating: nil, count: jointNames.count)
-                // The app never decides what a rep is; FormCore owns all counting and rejection logic.
-                for event in engine.push(t: t, joints: engineJoints, aspect: aspect) {
-                    if case .rep(let rep) = event { lastRep = rep; counted.append(rep) }
-                }
-            }
-            onFrame?(CameraFrameState(joints: joints, aspect: aspect, mirrored: position == .front,
-                setupMessage: countingStarted ? nil : setup, countdown: countdown, started: countingStarted,
-                engineState: engine.state, repCount: engine.reps.count, lastRep: lastRep, countedReps: counted))
+            onFrame?(pipeline.processFrame(t: t, joints: joints, aspect: aspect, mirrored: position == .front))
         }
-    }
-    private func setupMessage(_ joints: [JointObservation?]) -> String? {
-        func point(_ name: String) -> JointObservation? {
-            guard let index = jointNames.firstIndex(of: name), index < joints.count,
-                  let joint = joints[index], joint.confidence >= 0.3,
-                  (0.02...0.98).contains(joint.x), (0.02...0.98).contains(joint.y) else { return nil }
-            return joint
-        }
-        guard let nose = point("nose"), let left = point("l_ankle"), let right = point("r_ankle") else {
-            return "Step into view with your face and both feet visible."
-        }
-        let height = max(left.y, right.y) - nose.y
-        guard height >= 0.45 else { return "Move closer. Your body should fill at least 45% of the frame." }
-        guard height <= 0.90 else { return "Move back. Leave room above your head and below your feet." }
-        guard upright else { return "Keep the phone upright and level on the tripod." }
-        return nil
     }
     func finish() async -> SessionCapture {
         await withCheckedContinuation { continuation in
@@ -207,10 +168,11 @@ final class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
                 stopped = true
                 motion.stopDeviceMotionUpdates()
                 if captureSession.isRunning { captureSession.stopRunning() }
-                let recording = collectPose && !frames.isEmpty
-                    ? Recording(sport: sport, handedness: handedness, aspect: aspect, frames: frames) : nil
-                let snapshot = SessionCapture(summary: engine.summary(), reps: engine.reps, recording: recording)
-                frames.removeAll()
+                #if DEBUG
+                replay?.stop()
+                replay = nil
+                #endif
+                let snapshot = pipeline.finish()
                 continuation.resume(returning: snapshot)
             }
         }
@@ -220,7 +182,11 @@ final class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
             stopped = true
             motion.stopDeviceMotionUpdates()
             if captureSession.isRunning { captureSession.stopRunning() }
-            frames.removeAll()
+            #if DEBUG
+            replay?.stop()
+            replay = nil
+            #endif
+            pipeline.discardRecording()
         }
     }
 }
