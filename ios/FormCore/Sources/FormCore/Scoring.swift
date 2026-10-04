@@ -7,6 +7,7 @@ struct Target {
 }
 
 func targetFor(_ spec: MetricSpec, _ repType: String) -> Target? {
+    if let only = spec.onlyTypes, !only.contains(repType) { return nil }
     if let entry = spec.byType?[repType] {
         guard let o = entry else { return nil }
         return Target(mean: o.mean, std: o.std, tol: o.tol)

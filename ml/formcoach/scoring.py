@@ -6,6 +6,9 @@ import math
 
 def target_for(spec: dict, rep_type: str):
     """Returns (mean, std, tol) for this rep type, or None when the metric does not apply."""
+    only = spec.get("only_types")
+    if only is not None and rep_type not in only:
+        return None
     by_type = spec.get("by_type") or {}
     if rep_type in by_type:
         o = by_type[rep_type]

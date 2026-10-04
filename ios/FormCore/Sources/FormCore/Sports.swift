@@ -73,7 +73,7 @@ func analyzeGolf(_ seg: [Sample], _ ctx: FormEngine) -> Analysis? {
     var depth = [Double](repeating: 0, count: n)
     for i in 1..<(n - 1) { depth[i] = ry[i] - max(pre[i], suf[i]) }
     let impact = argmax(depth, 1, n - 2)
-    if depth[impact] < 0.6 { return nil }
+    if depth[impact] < (ctx.profile.pattern?["min_valley"] ?? 0.6) { return nil }
     var lo = impact
     while lo > 0 && seg[impact].t - seg[lo - 1].t <= 1.0 { lo -= 1 }
     var hi = impact
@@ -99,7 +99,7 @@ func analyzeGolf(_ seg: [Sample], _ ctx: FormEngine) -> Analysis? {
     }
     let back = seg[top].t - seg[start].t
     let down = seg[impact].t - seg[top].t
-    if back < 0.2 || down < 0.08 { return nil }
+    if back < 0.2 || down < 0.06 { return nil }
 
     let a = seg[start], tp = seg[top], im = seg[impact], fi = seg[fin]
     // The backswing goes toward the trail side, so its direction tells us the lead arm. This holds
@@ -161,6 +161,8 @@ func analyzeBasketball(_ seg: [Sample], _ ctx: FormEngine) -> Analysis? {
     }
     let pat = ctx.profile.pattern ?? [:]
     if load! > (pat["max_load_elbow"] ?? 180.0) || snap < (pat["min_extension_speed"] ?? 0.0) { return nil }
+    // ...and finishes with the arm close to straight; reaching up to stretch or scratch does not.
+    guard let releaseElbow = ea[release], releaseElbow >= (pat["min_release_elbow"] ?? 0.0) else { return nil }
 
     // Face-on, the knees bend toward the camera, so knee flexion is invisible in 2D. The hips
     // dropping and then rising is what the camera can see.
@@ -189,6 +191,14 @@ func analyzeBasketball(_ seg: [Sample], _ ctx: FormEngine) -> Analysis? {
         if s.pts[d + "_wrist"]!.y < headY { holdEnd = i } else { break }
     }
     m["follow_through_hold"] = seg[holdEnd].t - rel.t
+    if let gw = rel.pts[ctx.off + "_wrist"] {
+        let gap = dist(gw, wr) / rel.torso
+        m["guide_hand_gap"] = gap
+        // Both arms locked straight overhead with the hands wide apart is a barbell press or a
+        // pull-up, not a shot: a shooter's hands are never more than about 0.7 torso apart.
+        if gap > (pat["max_hand_gap"] ?? 99.0), let offEl = armAngle(rel, ctx.off), offEl >= 150.0,
+           (rel.pts[ctx.off + "_shoulder"]!.y - gw.y) / rel.torso >= 0.6 { return nil }
+    }
     let ev = ["dip": seg[dip].t, "set": st.t, "release": rel.t]
     return Analysis(type: "shot", events: ev, metrics: m)
 }
@@ -242,6 +252,24 @@ func analyzeRacket(_ seg: [Sample], _ ctx: FormEngine) -> Analysis? {
     }
     let c = seg[contact]
     let reach = abs(lat[thru] - lat[back])
+    // Jumping jacks move both hands as mirror images and take both above the head; a stroke never does both.
+    let o = ctx.off
+    var dot = 0.0, nd = 0.0, no = 0.0
+    var bothUp = false
+    if thru >= max(back, 1) {
+        for i in max(back, 1)...thru {
+            guard let a0 = seg[i - 1].pts[d + "_wrist"], let a1 = seg[i].pts[d + "_wrist"],
+                  let b0 = seg[i - 1].pts[o + "_wrist"], let b1 = seg[i].pts[o + "_wrist"] else { continue }
+            let dx = a1.x - a0.x, dy = a1.y - a0.y
+            let mx = -(b1.x - b0.x), my = b1.y - b0.y
+            dot += dx * mx + dy * my
+            nd += dx * dx + dy * dy
+            no += mx * mx + my * my
+            let hip = seg[i].hip
+            if (a1.y - hip.y) / seg[i].torso < -1.3 && (b1.y - hip.y) / seg[i].torso < -1.3 { bothUp = true }
+        }
+    }
+    if bothUp && nd > 0 && no > 0 && dot / (nd * no).squareRoot() > (pat["max_mirror"] ?? 2.0) { return nil }
     let b = seg[back]
     var stance: Double? = nil
     for i in 0...contact {

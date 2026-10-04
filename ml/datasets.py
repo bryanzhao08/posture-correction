@@ -6,6 +6,10 @@ THETIS   (tennis)     55 players (p1-p31 beginners, p32-p55 experts) shadow-swin
                       Kinect (mirrored video, un-mirrored here); one stroke type per clip. https://github.com/THETIS-dataset/dataset
 SPL      (basketball) 583 motion-captured free throws from 5 athletes with made/missed result.
                       https://github.com/mlsedigital/SPL-Open-Data
+Penn Action           2,326 YouTube clips of 15 actions with human-labelled joints (same 13 joints):
+                      golf swings and tennis strokes by players of all levels, plus squats, jumping
+                      jacks, pitches, bat swings, push-ups... used as motions that must not count.
+                      http://dreamdragon.github.io/PennAction/  (labels only; frames not needed)
 """
 from __future__ import annotations
 
@@ -111,3 +115,34 @@ def spl(distance_ft: float = 12.0):
                "fps": float(d["sampling_rate"]), "aspect": aspect, "frames": frames}
         yield f"spl_{d['trial_date']}_{d['participant_id']}_{d['trial_id']}", pad_end(rec, 0.6), {
             "result": d["result"], "participant": d["participant_id"], "date": d["trial_date"]}
+
+
+def pad_start(rec: dict, seconds: float) -> dict:
+    """Hold the first pose: trimmed clips start mid-routine, a person at the camera stands first."""
+    fps = rec["fps"]
+    first = rec["frames"][0]
+    n = int(seconds * fps)
+    for fr in rec["frames"]:
+        fr["t"] = round(fr["t"] + n / fps, 4)
+    rec["frames"][:0] = [{"t": round(i / fps, 4), "j": first["j"]} for i in range(n)]
+    return rec
+
+
+def penn_action(actions=None, fps: float = 30.0):
+    """Penn Action labels. Clips have no frame rate on record; YouTube footage is mostly 30 fps."""
+    import scipy.io as sio
+    for path in sorted(glob.glob(str(DATA / "Penn_Action" / "labels" / "*.mat"))):
+        m = sio.loadmat(path, squeeze_me=True)
+        action = str(m["action"])
+        if actions is not None and action not in actions:
+            continue
+        h, w = float(m["dimensions"][0]), float(m["dimensions"][1])
+        xs, ys, vis = m["x"], m["y"], m["visibility"]
+        frames = []
+        for i in range(int(m["nframes"])):
+            j = [[round(float(xs[i][k]) / w, 5), round(float(ys[i][k]) / h, 5), 0.9 if vis[i][k] else 0.4]
+                 for k in range(13)]
+            frames.append({"t": round(i / fps, 4), "j": j})
+        rec = {"handedness": "right", "fps": fps, "aspect": w / h, "frames": frames}
+        yield f"penn_{Path(path).stem}", pad_end(pad_start(rec, 1.6), 0.6), {
+            "action": action, "view": str(m["pose"])}

@@ -93,11 +93,13 @@ public struct MetricSpec: Decodable {
     let weight: Double
     let oneSided: String?
     let byType: [String: TypeTarget?]?
+    let onlyTypes: [String]?
     let cueLow: String
     let cueHigh: String
     enum CodingKeys: String, CodingKey {
         case id, label, unit, mean, std, tol, weight
         case oneSided = "one_sided", byType = "by_type", cueLow = "cue_low", cueHigh = "cue_high"
+        case onlyTypes = "only_types"
     }
 }
 

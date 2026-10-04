@@ -15,6 +15,8 @@ CASES = {
                                         ("rest", 1.0), ("scratch_head",), ("rest", 1.0)], []),
     "basketball_2_shots": ("basketball", [("rest", 1.0), ("basketball_shot",), ("rest", 1.2),
                                           ("basketball_shot",), ("rest", 1.0)], ["shot"] * 2),
+    "basketball_set_shots_no_squat": ("basketball", [("rest", 1.0), ("basketball_set_shot",), ("rest", 1.0),
+                                                     ("basketball_set_shot",), ("rest", 1.0)], ["shot"] * 2),
     "basketball_dribble_then_shot": ("basketball", [("rest", 1.0), ("basketball_dribble",),
                                                     ("basketball_dribble",), ("rest", 0.5),
                                                     ("basketball_shot",), ("rest", 1.0)], ["shot"]),

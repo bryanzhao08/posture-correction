@@ -77,20 +77,29 @@ Full report: [`ml/reports/validation.md`](ml/reports/validation.md).
 | Sport | Data | Counting | Scoring |
 |---|---|---|---|
 | Golf | GolfDB, 64 held-out pro swings | **97%** of labelled swings counted; impact timed to 0 ms median, top of swing 33 ms | held-out pros median 97 |
-| Basketball | SPL, 187 free throws by 2 held-out athletes | **98%** counted exactly once, 0 double counts, 561 non-shot motions ignored | held-out median 92 |
-| Tennis | THETIS, 333 held-out clips (experts + beginners, 17 fps Kinect video) | 69-75% counted exactly once; stroke type 79-86% correct | experts out-score beginners, AUC 0.72 |
-| Pickleball | none public | unvalidated | coaching priors |
+| Golf | Penn Action, 81 face-on real-world swings (all levels) | **83%** counted (was 64% with pro-fitted thresholds) | |
+| Basketball | SPL, 187 free throws by 2 held-out athletes | **98%** counted exactly once, 0 double counts, 569 non-shot motions ignored | held-out median 94 |
+| Tennis | THETIS, 333 held-out clips (experts + beginners, 17 fps Kinect video) | 69-73% counted exactly once; stroke type 79-86% correct | experts out-score beginners, AUC 0.73 |
+| Pickleball | Penn Action tennis forehands as a proxy (no pickleball data exists) | 85% of proxy strokes counted | coaching priors |
+
+Motions that must not count ([Penn Action](http://dreamdragon.github.io/PennAction/), 1,257 clips
+of squats, jumping jacks, push-ups, pull-ups, sit-ups, jump rope, bench press, guitar, barbell lifts):
+golf 0%, tennis 1%, pickleball 1%, basketball 4% (almost all barbell jerks and pull-ups; squats
+1 of 231, jumping jacks 0 of 112). Other sports' swings (baseball, bowling) do register in the
+racket sports, since they are swinging motions; the user picks the sport, so this is acceptable.
 
 Honest limits:
 - **Tennis** is the weakest: THETIS is 17 fps shadow swinging, and slow beginner swings overlap
   with ordinary arm movement. Expect better on a 30 fps phone, but it needs real phone data.
 - **Pickleball** has no public pose dataset. It uses the tennis analyser with prior ranges;
   `docs/DATA_COLLECTION.md` describes how to collect a validation set.
-- The basketball form score does not predict makes vs misses (AUC 0.42): it measures technique
+- A face-on camera cannot see how far the arm reaches *toward* it, so arm extension is only scored
+  on serves and overheads, not groundstrokes or dinks.
+- The basketball form score does not predict makes vs misses (AUC 0.41): it measures technique
   consistency with the reference shooters, not outcome.
 - Golf tempo is only moderately reliable at 30 fps (the downswing is about 8 frames), so it is
   down-weighted.
-- GolfDB is CC BY-NC 4.0: the fitted golf ranges are fine for research and prototyping, but check
+- GolfDB is CC BY-NC 4.0 and Penn Action is for research use: fine for prototyping, but check
   licensing before a commercial launch.
 
 ## Repository layout

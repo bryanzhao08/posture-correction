@@ -81,7 +81,7 @@ def golf(seg, ctx):
         return None
     depth = [0.0] + [ry[i] - max(pre[i], suf[i]) for i in range(1, n - 1)] + [0.0]
     impact = argmax(depth, 1, n - 2)
-    if depth[impact] < 0.6:
+    if depth[impact] < ctx.profile["pattern"]["min_valley"]:
         return None
     lo = impact
     while lo > 0 and seg[impact].t - seg[lo - 1].t <= 1.0:
@@ -113,7 +113,7 @@ def golf(seg, ctx):
             break
     back = seg[top].t - seg[start].t
     down = seg[impact].t - seg[top].t
-    if back < 0.2 or down < 0.08:
+    if back < 0.2 or down < 0.06:
         return None
 
     a, tp, im, fi = seg[start], seg[top], seg[impact], seg[fin]
@@ -180,6 +180,9 @@ def basketball(seg, ctx):
     pat = ctx.profile.get("pattern", {})
     if load > pat.get("max_load_elbow", 180.0) or snap < pat.get("min_extension_speed", 0.0):
         return None
+    # ...and finishes with the arm close to straight; reaching up to stretch or scratch does not.
+    if ea[release] is None or ea[release] < pat.get("min_release_elbow", 0.0):
+        return None
 
     # Face-on, the knees bend toward the camera, so knee flexion is invisible in 2D. The hips
     # dropping and then rising is what the camera can see.
@@ -212,6 +215,15 @@ def basketball(seg, ctx):
         else:
             break
     m["follow_through_hold"] = seg[hold_end].t - rel.t
+    gw = rel.pts.get(ctx.off + "_wrist")
+    if gw is not None:
+        m["guide_hand_gap"] = dist(gw, wr) / rel.torso
+        # Both arms locked straight overhead with the hands wide apart is a barbell press or a
+        # pull-up, not a shot: a shooter's hands are never more than about 0.7 torso apart.
+        off_el = _arm_angle(rel, ctx.off)
+        if (m["guide_hand_gap"] > pat["max_hand_gap"] and off_el is not None and off_el >= 150.0
+                and (rel.pts[ctx.off + "_shoulder"][1] - gw[1]) / rel.torso >= 0.6):
+            return None
     ev = {"dip": seg[dip].t, "set": st.t, "release": rel.t}
     return "shot", ev, m
 
@@ -263,6 +275,26 @@ def racket(seg, ctx):
         rep_type = "forehand" if lat[back] > lat[thru] else "backhand"
     c = seg[contact]
     reach = abs(lat[thru] - lat[back])
+    # Jumping jacks and arm circles move both hands as mirror images and take both above the head;
+    # a stroke never does both (a one-handed backhand's free arm counter-moves, but stays low).
+    o = ctx.off
+    dot = nd = no = 0.0
+    both_up = False
+    for i in range(max(back, 1), thru + 1):
+        a0, a1 = seg[i - 1].pts[d + "_wrist"], seg[i].pts[d + "_wrist"]
+        b0, b1 = _p(seg[i - 1], o + "_wrist"), _p(seg[i], o + "_wrist")
+        if b0 is None or b1 is None:
+            continue
+        dx, dy = a1[0] - a0[0], a1[1] - a0[1]
+        mx, my = -(b1[0] - b0[0]), b1[1] - b0[1]
+        dot += dx * mx + dy * my
+        nd += dx * dx + dy * dy
+        no += mx * mx + my * my
+        hip = seg[i].hip
+        if (a1[1] - hip[1]) / seg[i].torso < -1.3 and (b1[1] - hip[1]) / seg[i].torso < -1.3:
+            both_up = True
+    if both_up and nd > 0 and no > 0 and dot / math.sqrt(nd * no) > pat["max_mirror"]:
+        return None
 
     b = seg[back]
     stance = None
