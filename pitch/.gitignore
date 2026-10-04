@@ -1,0 +1,5 @@
+node_modules/
+*.pdf
+*.pptx
+assets/*.mp4
+assets/tpl_*
