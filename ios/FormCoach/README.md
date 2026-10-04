@@ -13,8 +13,7 @@ iPhone running iOS 17 or newer. Swift language mode is 5.0. FormCore is a local 
 The app now type-checks with **0 errors** in DEBUG and release mode for both arm64 device and
 arm64 Simulator, targeting iOS 17 with the iOS 26.2 SDK. Existing Swift 6 concurrency warnings
 remain in Swift 5 mode. XcodeGen project generation and fixture resource references were verified.
-The full application has not been built or launched in the Simulator; that end-to-end test remains
-with the delegating agent when the Simulator platform/runtime download completes.
+The full app was subsequently built and tested in the Simulator; see the batch 3 results below.
 
 ## Operation
 
@@ -102,9 +101,8 @@ Camera permissions, motion checks and live-session processing retain their prior
   matching rep events and last HUD/frame state, and real-time duration (within 0.5 seconds).
   Results: golf **3 swings**, basketball **2 shots**, tennis **forehand + backhand + serve**,
   pickleball **2 forehands**. Temporary verification outputs were removed after checking.
-- Full app login → replay → summary → backend upload → history remains to be tested in the
-  Simulator. The native replay test verifies the actual source/pipeline, not SwiftUI presentation,
-  Keychain, networking or physical haptics.
+- The earlier native replay check verified the source/pipeline. The batch 3 UI test below now
+  also verifies registration, SwiftUI presentation, networking, summary upload and history.
 
 On-device checks needed: preview/skeleton alignment on front and back cameras; permissions and
 local-network/ATS access; countdown reset on bad framing; engine transitions and idle rejection;
@@ -126,4 +124,90 @@ resource entries. `plutil -lint` passed for Info.plist. Parsed every asset JSON,
 is opaque RGB at 1024×1024 and inspected it visually, checked shared joint/sport mapping, and
 ran a simple delimiter scan of the original 18 Swift sources. Reviewed source files, token
 persistence and explicit CodingKeys. The later replay task added the type-check/project-generation
-and real-time verification above; visual layout and full app runtime checks are still outstanding.
+and real-time verification above. Batch 3 adds the actual Simulator build, UI flow and screenshot review below.
+
+
+## Batch 3: hologram demos and orange markers
+
+Completed within `ios/FormCoach/**`, `ios/FormCoachUITests/**`, and `ios/project.yml`.
+No FormCore, shared catalog/profile, backend, or ML source was edited.
+
+### Implementation
+
+The bundled cue catalog resolves displayed cues by exact text and sport. Live cues, setup camera
+instructions, summary focus, checkpoint focus, rep cues and session details use the shared
+ask-first prompt. “Not now” persists for that cue/session, and “Offer movement demos” defaults on.
+A stable presentation host keeps the full-screen demo open when the live setup countdown ends.
+Tripod instructions remain available through an explicit 44-point control during counting.
+
+`DemoMotionTable.swift` contains all 36 catalog entries and four setup entries. Ten shared base
+motions use smooth joint-angle keyframes with parameter overrides and realistic swing/release
+timing. SceneKit renders the mannequin, sport implements, tripod/phone, emissive additive colors,
+moving scanline and floor grid. Wrong/Correct/Both, Replay, handedness mirroring, Reduce Motion
+crossfades and accessible captions are implemented. Catalog/table coverage is asserted in DEBUG.
+
+Per-sport marker preferences and sticker guides cover golf, tennis and pickleball. The serial
+camera queue samples BGRA every fourth pixel, thresholds centralized orange HSV constants and
+finds connected components. Only a low-confidence/missing wrist near a fresh known wrist or
+forearm extrapolation can be replaced, at confidence 0.6. Golf uses the non-dominant wrist;
+racket sports use the dominant wrist. The farthest marker along the forearm identifies the
+implement. All detections appear as orange rings, with a setup count. Opt-in recordings include
+optional `m` centroid arrays; replay uses its original joints and no marker detection.
+
+### Files changed
+
+- New: `Demos/CoachingInstruction.swift`, `Demos/DemoMotionTable.swift`, `Demos/HologramDemo.swift`.
+- New: `Camera/OrangeMarkerTracker.swift`.
+- Updated: `App/AppState.swift`, `App/FormCoachApp.swift`.
+- Updated: `Camera/CameraManager.swift`, `Camera/PoseSessionPipeline.swift`,
+  `Camera/SessionController.swift`, `Camera/SkeletonOverlay.swift`.
+- Updated: `Services/Models.swift`.
+- Updated: `Views/SessionView.swift`, `Views/SettingsView.swift`, `Views/SummaryView.swift`,
+  `Views/HistoryView.swift`.
+- Updated: `../FormCoachUITests/FormCoachFlowTests.swift`; new
+  `../FormCoachUITests/OrangeMarkerTests.swift`.
+- Updated: `../project.yml`, this `README.md`.
+
+Paths without a leading `../` are relative to this app directory. Generated projects, build
+outputs, test logs, temporary backend data and screenshots are under
+`../FormCoachUITests/Artifacts/Batch3/`, excluded from target sources.
+
+### Verification results
+
+Xcode 26.3 (17C529), iOS Simulator SDK 26.2, iPhone 16 Pro on iOS 18.5.
+XcodeGen generation passed. The latest `xcodebuild build-for-testing` passed; the matching
+`test-without-building` run passed **5 tests, 0 failures**, including:
+
+- Catalog coverage: 36 unique catalog keys, four setup keys, differing wrong/correct parameters,
+  and every base motion represented.
+- BGRA synthetic blobs: centroid coordinates, separated components and tiny-speck rejection.
+- Wrist fallback: confidence gating, preserving other joints, proximity rejection and implement selection.
+- Dominant-side extrapolation and rejection of stale wrist history.
+- Registration → golf replay → cue demo → Wrong/Correct/Replay → close → tripod setup demo →
+  Correct → close → three counted reps → synced summary → history.
+
+The UI test starts with a fresh login only when both explicit UI-test/reset arguments are present
+in a DEBUG Simulator build. Its default backend is `http://localhost:8000`. For this verification,
+port 8000 was already occupied, so the generated verification scheme supplies
+`FORMCOACH_UI_TEST_BACKEND=http://127.0.0.1:18004`. The isolated server used
+`FORMCOACH_DATA_DIR=ios/FormCoachUITests/Artifacts/Batch3/backend-data` and was stopped after testing.
+The installed iPhone 16 Pro runtime is 18.5, so the destination specifies `OS=18.5`.
+The generated verification project's app plist path was adjusted because it lives below `ios/`.
+
+Results: `../FormCoachUITests/Artifacts/Batch3/TestsReviewed.xcresult`.
+Build log: `../FormCoachUITests/Artifacts/Batch3/build-reviewed.log`.
+Test log: `../FormCoachUITests/Artifacts/Batch3/test-reviewed.log`.
+
+Reviewed screenshots are under `../FormCoachUITests/Artifacts/Batch3/ReviewedScreenshots/`:
+
+- `3b-golf-hologram-both.png`
+- `3c-golf-hologram-wrong.png`
+- `3d-golf-hologram-correct.png`
+- `4a-setup-hologram.png`
+- `4b-setup-hologram-correct.png`
+- `5-summary.png`, `6-summary-scrolled.png`, `7-history.png`.
+
+Inspected the golf wrong/correct and tripod wrong/correct images: the mannequin, club, phone and
+tripod render visibly; the SceneKit views are not black or empty. The final scanline is faint.
+Physical iPhone 14 marker latency (~3 ms target), real lighting/stickers, and physical camera
+alignment still require device measurement; Simulator tests do not establish those results.

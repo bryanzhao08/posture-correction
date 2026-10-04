@@ -7,7 +7,8 @@ final class FormCoachFlowTests: XCTestCase {
 
     override func setUp() {
         continueAfterFailure = false
-        app.launchArguments = ["-uiTesting"]
+        let backend = ProcessInfo.processInfo.environment["FORMCOACH_UI_TEST_BACKEND"] ?? "http://localhost:8000"
+        app.launchArguments = ["-uiTesting", "-resetTestAccount", "-backendURL", backend, "-offerMovementDemos", "YES"]
         app.launch()
     }
 
@@ -54,11 +55,40 @@ final class FormCoachFlowTests: XCTestCase {
 
         let end = app.buttons["End session"]
         XCTAssertTrue(end.waitForExistence(timeout: 20))
-        sleep(12)
+        let cueDemo = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'demo.show.golf.'")).firstMatch
+        XCTAssertTrue(cueDemo.waitForExistence(timeout: 40))
+        cueDemo.tap()
+        XCTAssertTrue(app.buttons["hologram.close"].waitForExistence(timeout: 10))
+        sleep(1)
+        shot("3b-golf-hologram-both")
+        app.buttons["Wrong"].tap()
+        sleep(1)
+        shot("3c-golf-hologram-wrong")
+        app.buttons["Correct"].tap()
+        sleep(1)
+        shot("3d-golf-hologram-correct")
+        app.buttons["Replay"].tap()
+        app.buttons["hologram.close"].tap()
         shot("3-session-mid")
         let done = app.staticTexts["Demo complete · tap End session"]
         XCTAssertTrue(done.waitForExistence(timeout: 60), "replay finished")
         shot("4-session-end")
+        let setupInstructions = app.buttons["setup.instructions"]
+        XCTAssertTrue(setupInstructions.waitForExistence(timeout: 5))
+        for _ in 0..<3 where !setupInstructions.isHittable { app.swipeUp() }
+        setupInstructions.tap()
+        let setupDemo = app.buttons["demo.show.setup.golf"]
+        XCTAssertTrue(setupDemo.waitForExistence(timeout: 5))
+        for _ in 0..<3 where !setupDemo.isHittable { app.swipeUp() }
+        setupDemo.tap()
+        XCTAssertTrue(app.buttons["hologram.close"].waitForExistence(timeout: 10))
+        sleep(1)
+        shot("4a-setup-hologram")
+        app.buttons["Correct"].tap()
+        sleep(1)
+        shot("4b-setup-hologram-correct")
+        app.buttons["hologram.close"].tap()
+        setupInstructions.tap()
         end.tap()
 
         XCTAssertTrue(app.navigationBars["Session summary"].waitForExistence(timeout: 20))
@@ -72,5 +102,22 @@ final class FormCoachFlowTests: XCTestCase {
         app.tabBars.buttons["History"].tap()
         sleep(3)
         shot("7-history")
+    }
+}
+
+final class DemoCatalogCoverageTests: XCTestCase {
+    func testEveryCatalogEntryHasParameters() throws {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "cue_catalog", withExtension: "json"))
+        let entries = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [[String: Any]])
+        let keys = try entries.map { try XCTUnwrap($0["key"] as? String) }
+        XCTAssertEqual(keys.count,36)
+        XCTAssertEqual(Set(keys).count,keys.count)
+        for key in keys { XCTAssertNotNil(DemoMotionTable.entries[key],key) }
+        for sport in ["golf","basketball","tennis","pickleball"] { XCTAssertNotNil(DemoMotionTable.entries["setup." + sport]) }
+        XCTAssertEqual(DemoMotionTable.entries.count,40)
+        for (key,spec) in DemoMotionTable.entries {
+            XCTAssertNotEqual(spec.wrong,spec.correct,key)
+        }
+        XCTAssertEqual(Set(DemoMotionTable.entries.values.map(\.base)),Set(BaseMotion.allCases))
     }
 }

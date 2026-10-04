@@ -22,6 +22,13 @@ final class AppState: ObservableObject {
     var pendingCount: Int { sessions.filter { $0.server == nil || ($0.recording != nil && !$0.poseUploaded) }.count }
 
     init() {
+        #if DEBUG && targetEnvironment(simulator)
+        // The end-to-end registration test uses an isolated backend and cannot reuse another server's login.
+        if CommandLine.arguments.contains("-uiTesting") && CommandLine.arguments.contains("-resetTestAccount") {
+            try? KeychainStore.delete()
+            UserDefaults.standard.removeObject(forKey: "cachedUser")
+        }
+        #endif
         let url = UserDefaults.standard.string(forKey: "backendURL") ?? "http://localhost:8000"
         backendURL = url
         api = APIClient(baseURL: URL(string: url) ?? URL(string: "http://localhost:8000")!, token: KeychainStore.load())

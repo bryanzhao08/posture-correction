@@ -163,7 +163,9 @@ struct PoseFrame: Codable {
     let t: Double
     // Absent points use [0, 0, 0]; joint positions and confidence otherwise match FormCore.
     let j: [[Double]]
-    enum CodingKeys: String, CodingKey { case t, j }
+    let m: [[Double]]?
+    init(t: Double, j: [[Double]], m: [[Double]]? = nil) { self.t = t; self.j = j; self.m = m }
+    enum CodingKeys: String, CodingKey { case t, j, m }
 }
 struct LocalSession: Codable, Identifiable {
     var id: String { payload.clientID }

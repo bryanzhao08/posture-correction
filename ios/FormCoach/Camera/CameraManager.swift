@@ -9,6 +9,8 @@ final class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
     var onFrame: ((CameraFrameState) -> Void)?
     var onError: ((String) -> Void)?
     private let detector: PoseDetector
+    private let markerTracker: OrangeMarkerTracker
+    private let markersEnabled: Bool
     private let pipeline: PoseSessionPipeline
     private let motion = CMMotionManager()
     private let motionQueue = OperationQueue()
@@ -29,6 +31,8 @@ final class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
 
     init(profiles: Profiles, sport: String, handedness: Handedness, collectPose: Bool) {
         detector = PoseDetector(jointNames: profiles.joints)
+        markerTracker = OrangeMarkerTracker(names: profiles.joints, sport: sport, handedness: handedness)
+        markersEnabled = sport != "basketball" && UserDefaults.standard.bool(forKey: "orangeMarkers." + sport)
         jointCount = profiles.joints.count
         #if DEBUG
         isReplaying = ReplayDemoSource.shouldReplay
@@ -126,6 +130,7 @@ final class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
                 catch { self.captureSession.commitConfiguration(); throw error }
                 self.captureSession.commitConfiguration()
                 self.pipeline.resetSetup()
+                self.markerTracker.reset()
             } catch { self.onError?(error.localizedDescription) }
         }
     }
@@ -159,7 +164,9 @@ final class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
                 joints = Array(repeating: nil, count: jointCount)
                 if !visionFailed { onError?("Body tracking failed: " + error.localizedDescription); visionFailed = true }
             }
-            onFrame?(pipeline.processFrame(t: t, joints: joints, aspect: aspect, mirrored: position == .front))
+            let markers = markersEnabled ? markerTracker.detect(buffer) : []
+            let tracked = markersEnabled ? markerTracker.substitute(joints: joints, markers: markers, t: t) : joints
+            onFrame?(pipeline.processFrame(t: t, joints: tracked, aspect: aspect, mirrored: position == .front, markers: markers))
         }
     }
     func finish() async -> SessionCapture {

@@ -31,3 +31,9 @@ xcuserdata/
 
 # macOS
 .DS_Store
+
+# Build and test output must never live in source folders
+ios/**/Artifacts/
+ios/**/Verification/
+ios/**/.verification/
+*.xcresult

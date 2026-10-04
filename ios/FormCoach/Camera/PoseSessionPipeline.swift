@@ -12,6 +12,7 @@ struct CameraFrameState {
     let repCount: Int
     let lastRep: Rep?
     let countedReps: [Rep]
+    let markers: [MarkerPoint]
 }
 struct SessionCapture {
     let summary: SessionSummary
@@ -43,7 +44,7 @@ final class PoseSessionPipeline {
         engine = FormEngine(profiles: profiles, sport: sport, handedness: handedness)
     }
     func resetSetup() { setupSince = nil; countingStarted = false }
-    func processFrame(t: Double, joints: [JointObservation?], aspect: Double, mirrored: Bool) -> CameraFrameState {
+    func processFrame(t: Double, joints: [JointObservation?], aspect: Double, mirrored: Bool, markers: [MarkerPoint] = []) -> CameraFrameState {
         self.aspect = aspect
         let setup = setupMessage(joints)
         var countdown: Int?
@@ -60,7 +61,7 @@ final class PoseSessionPipeline {
             if collectPose {
                 frames.append(PoseFrame(t: t, j: joints.map { joint in
                     joint.map { [$0.x, $0.y, $0.confidence] } ?? [0, 0, 0]
-                }))
+                }, m: markers.isEmpty ? nil : markers.map { [$0.x, $0.y] }))
             }
         }
         if hasStartedCounting {
@@ -73,7 +74,7 @@ final class PoseSessionPipeline {
         }
         return CameraFrameState(joints: joints, aspect: aspect, mirrored: mirrored,
             setupMessage: countingStarted ? nil : setup, countdown: countdown, started: countingStarted,
-            engineState: engine.state, repCount: engine.reps.count, lastRep: lastRep, countedReps: counted)
+            engineState: engine.state, repCount: engine.reps.count, lastRep: lastRep, countedReps: counted, markers: markers)
     }
     private func setupMessage(_ joints: [JointObservation?]) -> String? {
         func point(_ name: String) -> JointObservation? {

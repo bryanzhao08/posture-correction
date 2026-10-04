@@ -11,6 +11,7 @@ struct FormCoachApp: App {
                 if state.user != nil { MainView() }
                 else { AuthView() }
             }
+            .modifier(DemoPresentation())
             .environmentObject(state)
             .tint(.accentColor)
             .task { await state.launch() }

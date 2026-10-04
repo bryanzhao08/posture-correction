@@ -31,6 +31,8 @@ final class SessionController: ObservableObject {
     #if DEBUG
     @Published private(set) var replayFinished = false
     #endif
+    var demoScope: String { sport.rawValue + ":" + Display.timestamp(startedAt) }
+    var markersEnabled: Bool { !isReplaying && sport != .basketball && UserDefaults.standard.bool(forKey: "orangeMarkers." + sport.rawValue) }
     var isReplaying: Bool {
         #if DEBUG
         return camera.isReplaying

@@ -101,7 +101,7 @@ struct HistoryView: View {
                             if let previous = checkpoint.previousAvgScore {
                                 Text("Previous average: \(Display.score(previous))")
                             }
-                            ForEach(Array(checkpoint.focusCues.enumerated()), id: \.offset) { _, cue in Text(cue) }
+                            ForEach(Array(checkpoint.focusCues.enumerated()), id: \.offset) { _, cue in CoachingInstruction(text: cue, sport: checkpoint.sport, scope: "checkpoint:\(checkpoint.id)") }
                             ComparisonRows(metrics: checkpoint.metrics)
                         }
                     }

@@ -4,6 +4,10 @@ import FormCore
 @MainActor
 struct SettingsView: View {
     @EnvironmentObject private var state: AppState
+    @AppStorage("offerMovementDemos") private var offerMovementDemos = true
+    @AppStorage("orangeMarkers.golf") private var golfMarkers = false
+    @AppStorage("orangeMarkers.tennis") private var tennisMarkers = false
+    @AppStorage("orangeMarkers.pickleball") private var pickleballMarkers = false
     @State private var handedness: Handedness = .right
     @State private var emailReports = true
     @State private var spokenCues = false
@@ -30,6 +34,19 @@ struct SettingsView: View {
                     }
                     Toggle("Email progress reports", isOn: $emailReports)
                     Toggle("Speak coaching cues", isOn: $spokenCues)
+                    Toggle("Offer movement demos", isOn: $offerMovementDemos)
+                }
+                Section("Golf markers") {
+                    Toggle("I'm using neon-orange markers", isOn: $golfMarkers)
+                    Text("Stick neon-orange markers on the back of your lead glove and the club head.").font(.caption)
+                }
+                Section("Tennis markers") {
+                    Toggle("I'm using neon-orange markers", isOn: $tennisMarkers)
+                    Text("Stick neon-orange markers on your hitting wrist and the racket tip.").font(.caption)
+                }
+                Section("Pickleball markers") {
+                    Toggle("I'm using neon-orange markers", isOn: $pickleballMarkers)
+                    Text("Stick neon-orange markers on your hitting wrist and the paddle's top edge.").font(.caption)
                 }
                 Section {
                     Toggle("Share pose data to improve accuracy", isOn: $sharePose)

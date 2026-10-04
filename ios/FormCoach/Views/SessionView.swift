@@ -15,6 +15,7 @@ struct SessionFlow: View {
             handedness: handedness, spokenCues: spokenCues, sharePose: sharePose))
     }
     var body: some View {
+        Group {
         if let id = savedID {
             NavigationStack {
                 LocalSummaryView(sessionID: id)
@@ -23,6 +24,7 @@ struct SessionFlow: View {
         } else {
             SessionView(controller: controller, onSaved: { savedID = $0 }, onCancel: { dismiss() })
         }
+        }.modifier(DemoPresentation())
     }
 }
 @MainActor
@@ -34,6 +36,7 @@ struct SessionView: View {
     let onCancel: () -> Void
     @State private var busy = false
     @State private var saveError: String?
+    @State private var showSetupInstructions = false
     @ScaledMetric(relativeTo: .largeTitle) private var repFontSize: CGFloat = 112
     @ScaledMetric(relativeTo: .largeTitle) private var scoreFontSize: CGFloat = 48
     @ScaledMetric(relativeTo: .largeTitle) private var countdownFontSize: CGFloat = 88
@@ -50,7 +53,7 @@ struct SessionView: View {
                     .ignoresSafeArea()
             }
             if let frame = controller.frame {
-                SkeletonOverlay(joints: frame.joints, names: controller.jointNames, aspect: frame.aspect, mirrored: frame.mirrored)
+                SkeletonOverlay(joints: frame.joints, names: controller.jointNames, aspect: frame.aspect, mirrored: frame.mirrored, markers: frame.markers)
                     .ignoresSafeArea()
             }
             GeometryReader { geometry in
@@ -88,14 +91,14 @@ struct SessionView: View {
                                 Text("\(controller.frame?.repCount ?? 0)").font(.system(size: repFontSize, weight: .heavy, design: .rounded)).monospacedDigit().minimumScaleFactor(0.5).lineLimit(1)
                                 Text("REPS").font(.title2.bold())
                                 if let cue = controller.frame?.lastRep?.cues.first {
-                                    Text(cue).font(.title2.bold()).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                                    CoachingInstruction(text: cue, sport: controller.sport.rawValue, scope: controller.demoScope).font(.title2.bold()).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                                 }
                             }.padding(24).frame(maxWidth: .infinity)
                                 .background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 24))
-                                .accessibilityElement(children: .combine)
+                                .accessibilityElement(children: .contain)
                         } else {
                             VStack(spacing: 16) {
-                                Text(controller.profile.camera).font(.headline).multilineTextAlignment(.center)
+                                CoachingInstruction(text: controller.profile.camera, sport: controller.sport.rawValue, scope: controller.demoScope, setup: true).font(.headline).multilineTextAlignment(.center)
                                 if let countdown = controller.frame?.countdown {
                                     Text("\(countdown)").font(.system(size: countdownFontSize, weight: .heavy, design: .rounded))
                                     Text("Hold your position").font(.title2.bold())
@@ -103,10 +106,27 @@ struct SessionView: View {
                                     Text(controller.frame?.setupMessage ?? "Stand in view with your face and both feet visible.")
                                         .font(.title2.bold()).multilineTextAlignment(.center)
                                 }
+                                if controller.markersEnabled { Text("Markers: \(controller.frame?.markers.count ?? 0) found").font(.caption).foregroundStyle(.orange) }
                                 if !controller.isReplaying {
                                     Text("After switching cameras, the setup check starts again.").font(.footnote)
                                 }
                             }.padding(24).frame(maxWidth: .infinity).background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 24))
+                        }
+                        if controller.frame?.started == true {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Button { showSetupInstructions.toggle() } label: {
+                                    HStack {
+                                        Text("Tripod setup")
+                                        Spacer()
+                                        Image(systemName: showSetupInstructions ? "chevron.up" : "chevron.down")
+                                    }.frame(maxWidth: .infinity, minHeight: 44).contentShape(Rectangle())
+                                }.buttonStyle(.borderless).accessibilityIdentifier("setup.instructions")
+                                    .accessibilityValue(showSetupInstructions ? "Expanded" : "Collapsed")
+                                if showSetupInstructions {
+                                    CoachingInstruction(text: controller.profile.camera, sport: controller.sport.rawValue,
+                                                        scope: controller.demoScope, setup: true).font(.subheadline)
+                                }
+                            }.padding(16).background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 16))
                         }
                         if let error = saveError ?? controller.error { ErrorNotice(message: error) }
                         if controller.cameraDenied {
@@ -134,7 +154,7 @@ struct SessionView: View {
         .foregroundStyle(.white)
         .preferredColorScheme(.dark)
         .task { await controller.start() }
-        .onDisappear { controller.stop() }
+        .onDisappear { if !DemoOffers.shared.isPresenting { controller.stop() } }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { Task { await finishAndSave() } }
         }

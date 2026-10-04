@@ -111,7 +111,7 @@ struct SummaryContent<Status: View>: View {
             status()
             Section("Coaching focus") {
                 if summary.topCues.isEmpty { Text("Complete more reps to get coaching cues.").foregroundStyle(.secondary) }
-                ForEach(Array(summary.topCues.enumerated()), id: \.offset) { _, cue in Text(cue) }
+                ForEach(Array(summary.topCues.enumerated()), id: \.offset) { _, cue in CoachingInstruction(text: cue, sport: sport, scope: sport + ":" + startedAt) }
             }
             Section("Your metrics and professional targets") {
                 if let profile = state.profiles?.sports[sport] {
@@ -160,7 +160,7 @@ struct SummaryContent<Status: View>: View {
             if let checkpoint = checkpoint {
                 Section("Checkpoint \(checkpoint.number) completed") {
                     Text("\(checkpoint.sessions) sessions · \(checkpoint.totalReps) reps · Average \(Display.score(checkpoint.avgScore))")
-                    ForEach(Array(checkpoint.focusCues.enumerated()), id: \.offset) { _, cue in Text(cue) }
+                    ForEach(Array(checkpoint.focusCues.enumerated()), id: \.offset) { _, cue in CoachingInstruction(text: cue, sport: sport, scope: sport + ":" + startedAt) }
                 }
             }
             if !reps.isEmpty {
@@ -175,7 +175,7 @@ struct SummaryContent<Status: View>: View {
                                     ScoreBar(score: rep.scores[metric])
                                 }.padding(.vertical, 8)
                             }
-                            ForEach(Array(rep.cues.enumerated()), id: \.offset) { _, cue in Text(cue) }
+                            ForEach(Array(rep.cues.enumerated()), id: \.offset) { _, cue in CoachingInstruction(text: cue, sport: sport, scope: sport + ":" + startedAt) }
                         }
                     }
                 }

@@ -7,17 +7,19 @@ struct SkeletonOverlay: View {
     let names: [String]
     let aspect: Double
     let mirrored: Bool
+    let markers: [MarkerPoint]
     private let bones = [
         ("nose", "l_shoulder"), ("nose", "r_shoulder"), ("l_shoulder", "r_shoulder"),
         ("l_shoulder", "l_elbow"), ("l_elbow", "l_wrist"), ("r_shoulder", "r_elbow"), ("r_elbow", "r_wrist"),
         ("l_shoulder", "l_hip"), ("r_shoulder", "r_hip"), ("l_hip", "r_hip"),
         ("l_hip", "l_knee"), ("l_knee", "l_ankle"), ("r_hip", "r_knee"), ("r_knee", "r_ankle")
     ]
-    init(joints: [JointObservation?], names: [String], aspect: Double, mirrored: Bool) {
+    init(joints: [JointObservation?], names: [String], aspect: Double, mirrored: Bool, markers: [MarkerPoint] = []) {
         self.joints = joints
         self.names = names
         self.aspect = aspect
         self.mirrored = mirrored
+        self.markers = markers
     }
     var body: some View {
         Canvas { context, size in
@@ -37,6 +39,10 @@ struct SkeletonOverlay: View {
                 path.move(to: a); path.addLine(to: b)
                 context.stroke(path, with: .color(.black.opacity(0.8)), lineWidth: 7)
                 context.stroke(path, with: .color(.cyan), lineWidth: 3)
+            }
+            for marker in markers {
+                let p = CGPoint(x: offset.x + CGFloat(mirrored ? 1-marker.x : marker.x)*width, y: offset.y + CGFloat(marker.y)*height)
+                context.stroke(Path(ellipseIn: CGRect(x: p.x-12,y: p.y-12,width: 24,height: 24)), with: .color(.orange), lineWidth: 3)
             }
             for name in names {
                 guard let p = point(name) else { continue }
