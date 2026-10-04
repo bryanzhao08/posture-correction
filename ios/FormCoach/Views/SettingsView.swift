@@ -73,6 +73,9 @@ struct SettingsView: View {
                     }.disabled(state.isSyncing || busy)
                 }
                 #if DEBUG
+                Section("Movement review") {
+                    NavigationLink("Demo gallery") { DemoGallery() }.accessibilityIdentifier("demo.gallery")
+                }
                 Section {
                     Toggle("Replay demo session", isOn: $replayDemoSession)
                 } header: { Text("Development session source") } footer: {

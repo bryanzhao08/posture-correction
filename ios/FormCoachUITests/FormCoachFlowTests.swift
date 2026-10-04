@@ -1,13 +1,13 @@
 import XCTest
 
-/// End-to-end flow in the Simulator: needs the backend on http://localhost:8000 and a DEBUG build,
+/// End-to-end flow in the Simulator: needs the backend on http://127.0.0.1:18004 and a DEBUG build,
 /// where the session screen replays a recorded golf session (3 swings) instead of the camera.
 final class FormCoachFlowTests: XCTestCase {
     let app = XCUIApplication()
 
     override func setUp() {
         continueAfterFailure = false
-        let backend = ProcessInfo.processInfo.environment["FORMCOACH_UI_TEST_BACKEND"] ?? "http://localhost:8000"
+        let backend = ProcessInfo.processInfo.environment["FORMCOACH_UI_TEST_BACKEND"] ?? "http://127.0.0.1:18004"
         app.launchArguments = ["-uiTesting", "-resetTestAccount", "-backendURL", backend, "-offerMovementDemos", "YES"]
         app.launch()
     }

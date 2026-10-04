@@ -211,3 +211,66 @@ Inspected the golf wrong/correct and tripod wrong/correct images: the mannequin,
 tripod render visibly; the SceneKit views are not black or empty. The final scanline is faint.
 Physical iPhone 14 marker latency (~3 ms target), real lighting/stickers, and physical camera
 alignment still require device measurement; Simulator tests do not establish those results.
+
+## Batch 4: hologram quality and review
+
+The procedural skeleton now uses adult limb lengths and two-bone IK. Golf keeps both hands on
+one grip and turns around the tilted address spine; basketball separates the guide hand at
+release and keeps the ball's flight independent of the follow-through hand. Tennis includes a
+one-handed backhand and serve toss; pickleball includes ready, compact groundstroke, and overhead
+poses. The motion table maps each catalog entry to its own posture or timing parameter.
+
+The renderer uses translucent additive material, a Fresnel rim, moving scan band, bloom, subtle
+flicker, and a grid/ring floor. Both plays one shared clock with an orange ghost behind cyan.
+Rotation guides use reusable nodes; setup demos show a phone, tripod, full-body frustum, distance
+label, and red clipping indication. Reduce Motion freezes the comparison pose and scan band.
+
+In DEBUG builds, Settings → Demo gallery lists 40 entries by sport. Key moment pauses positional
+cues at the same swing phase and timing cues at the same elapsed second. Replay resumes motion.
+`DemoGalleryReviewTests.testSlowReviewEveryWrongAndCorrectKeyMoment` is intentionally slow and
+attaches `<key>-wrong.png` and `<key>-correct.png` for every entry. Export its xcresult attachments
+with `xcrun xcresulttool export attachments`; use the manifest's human-readable names to recover
+the key/mode (the export tool adds an index and UUID). Keep generated projects, DerivedData,
+xcresult bundles, exported screenshots, and logs under `/tmp/formcoach-codex/`.
+
+Current UI tests default to `http://127.0.0.1:18004`. Start their isolated backend from `backend/`:
+`FORMCOACH_DATA_DIR=/tmp/formcoach-codex/backend ../.venv/bin/uvicorn app.main:app --port 18004`.
+Do not run tests against the user's normal backend on port 8000.
+
+These are illustrative keyframes, not motion-capture measurements. In particular, the low-ball
+leg load in `tennis.contact_height.high` and `pickleball.contact_height.high` is exaggerated for
+visibility and should receive coach review. Serve toss/ball flight and the one-handed backhand
+are stylized; full-body sequencing is not validated against an athlete capture.
+
+### Batch 4 verification
+
+The final iPhone 16 Pro / iOS 18.5 Simulator run passed **10 tests, 0 failures**:
+four anatomy checks, catalog coverage, the complete 40-entry gallery audit, the registration /
+practice / demo / sync / history flow, and three marker-tracking checks. The gallery audit took
+574 seconds and saved all 80 Wrong/Correct key-moment screenshots. An independent sweep of all
+40 entries, both variants, at 20 ms intervals found zero arm-chain length violations.
+
+Results: `/tmp/formcoach-codex/batch4/quality-audited.xcresult`.
+Build log: `/tmp/formcoach-codex/batch4/build-final.log`.
+Test log: `/tmp/formcoach-codex/batch4/quality-audited.log`.
+Reviewed gallery: `/tmp/formcoach-codex/gallery/`, containing exactly 80 files named
+`<key>-wrong.png` / `<key>-correct.png`. All pairs were visually inspected using four sport
+contact sheets; head-direction, elbow-flare, stance-height, and phone/frustum details were also
+inspected at full resolution. Contact sheets and attachment manifests remain under
+`/tmp/formcoach-codex/batch4/audited-attachments/`.
+
+The gallery supports search and uses the existing coaching-demo presenter. Each cue receives
+fresh playback state. Frozen comparisons stop continuous rendering, and closing a demo detaches
+its scene and actions. SceneKit geometry is omitted from the accessibility tree; the cue text,
+Wrong/Correct controls, Replay, Key moment, and Close remain accessible.
+
+Changed files: `App/FormCoachApp.swift`, `Demos/CoachingInstruction.swift`,
+`Demos/DemoGallery.swift`, `Demos/DemoMotion.swift`, `Demos/DemoMotionTable.swift`,
+`Demos/HologramDemo.swift`, `Views/SettingsView.swift`, this README,
+`../FormCoachUITests/DemoGalleryReviewTests.swift`,
+`../FormCoachUITests/FormCoachFlowTests.swift`, and `../project.yml`.
+
+Coach review remains appropriate for the exaggerated low-ball knee load in
+`tennis.contact_height.high` / `pickleball.contact_height.high`, the exaggerated lateral
+upper-body lean in `golf.head_sway.high`, and the stylized serve toss and one-handed backhand
+sequencing. These illustrative poses do not establish athlete-level biomechanics.

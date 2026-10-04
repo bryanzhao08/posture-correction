@@ -54,6 +54,7 @@ targets:
         excludes:
           - Artifacts
       - path: FormCoach/Camera/OrangeMarkerTracker.swift
+      - path: FormCoach/Demos/DemoMotion.swift
       - path: FormCoach/Demos/DemoMotionTable.swift
       - path: ../shared/cue_catalog.json
         buildPhase: resources

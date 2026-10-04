@@ -64,7 +64,7 @@ enum DemoCatalog {
     func body(content: Content) -> some View {
         content.environmentObject(presenter)
             .fullScreenCover(item: $presenter.cue, onDismiss: { DemoOffers.shared.isPresenting = false }) { cue in
-                HologramDemo(cue: cue, leftHanded: state.user?.handedness == .left)
+                HologramDemo(cue: cue, leftHanded: state.user?.handedness == .left).id(cue.key)
             }
     }
 }

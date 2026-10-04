@@ -2,292 +2,331 @@ import SwiftUI
 import SceneKit
 
 enum DemoPlayback: String, CaseIterable { case wrong = "Wrong", correct = "Correct", both = "Both" }
-
 @MainActor struct HologramDemo: View {
     let cue: DemoCue
     let leftHanded: Bool
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var mode = DemoPlayback.both
-    @State private var replay = 0
+    @State private var mode=DemoPlayback.both
+    @State private var replay=0
+    @State private var keyMoment=false
     var body: some View {
         NavigationStack {
-            VStack(spacing: 12) {
-                HologramScene(spec: DemoMotionTable.entries[cue.key]!, sport: cue.sport,
-                              leftHanded: leftHanded, reduceMotion: reduceMotion, mode: mode, replay: replay)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity).frame(minHeight: 260)
-                    .accessibilityLabel("3D movement demonstration. Orange shows the wrong motion. Cyan shows the correct motion.")
-                    .accessibilityIdentifier("hologram.scene")
-                Picker("Motion", selection: $mode) {
-                    ForEach(DemoPlayback.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            VStack(spacing: 8) {
+                HologramScene(cue: cue, leftHanded: leftHanded, reduceMotion: reduceMotion,
+                              mode: mode, replay: replay, keyMoment: keyMoment)
+                    .id(cue.key)
+                    .frame(maxWidth: .infinity,maxHeight: .infinity).frame(minHeight: 260)
+                    .accessibilityHidden(true)
+                HStack {
+                    Label("Correct",systemImage: "checkmark.circle").foregroundStyle(.cyan)
+                    Label(mode == .both ? "Wrong ghost" : "Wrong",systemImage: "xmark.circle").foregroundStyle(.orange)
+                }.font(.caption)
+                Picker("Motion",selection:$mode) {
+                    ForEach(DemoPlayback.allCases,id:\.self) { Text($0.rawValue).tag($0) }
                 }.pickerStyle(.segmented).padding(.horizontal)
-                Button("Replay") { replay += 1 }.buttonStyle(.bordered)
+                HStack {
+                    Button("Replay") { keyMoment=false; replay += 1 }
+                    Button(keyMoment ? "Play motion" : "Key moment") { keyMoment.toggle() }
+                        .accessibilityIdentifier("hologram.keyMoment")
+                }.buttonStyle(.bordered).frame(minHeight:44)
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment:.leading,spacing:10) {
                         Text(cue.meaning).font(.headline).accessibilityIdentifier("hologram.meaning")
                         Text(cue.text).font(.subheadline)
-                        Label("Wrong: " + cue.wrongMotion, systemImage: "xmark.circle").foregroundStyle(.orange)
-                        Label("Correct: " + cue.correctMotion, systemImage: "checkmark.circle").foregroundStyle(.cyan)
-                    }.frame(maxWidth: .infinity, alignment: .leading).padding()
-                }.frame(maxHeight: 230)
-            }
-            .background(Color(red: 0.015, green: 0.035, blue: 0.07))
-            .navigationTitle("Movement demo").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) {
-                Button("Close demo") { dismiss() }.accessibilityIdentifier("hologram.close")
-            } }
+                        Label("Wrong: "+cue.wrongMotion,systemImage:"xmark.circle").foregroundStyle(.orange)
+                        Label("Correct: "+cue.correctMotion,systemImage:"checkmark.circle").foregroundStyle(.cyan)
+                    }.frame(maxWidth:.infinity,alignment:.leading).padding()
+                }.frame(maxHeight:210)
+            }.background(Color(red:0.015,green:0.025,blue:0.05))
+                .navigationTitle("Movement demo").navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement:.confirmationAction) {
+                    Button("Close demo") { dismiss() }.accessibilityIdentifier("hologram.close")
+                } }
         }.preferredColorScheme(.dark)
     }
 }
 
-/// Joint-angle keyframes shared by every cue. A cue changes parameters, never the scene hierarchy.
-struct MotionPose {
-    var shoulder: Double = 35, across: Double = 0, elbow: Double = 25
-    var leadShoulder: Double = 35, leadElbow: Double = 10
-    var knee: Double = 15, turn: Double = 0, lean: Double = 0
-    var x: Double = 0, headX: Double = 0, headY: Double = 0, headTurn: Double = 0
-    static func blend(_ a: Self, _ b: Self, _ fraction: Double) -> Self {
-        let f = fraction * fraction * (3 - 2 * fraction)
-        func mix(_ x: Double, _ y: Double) -> Double { x + (y - x) * f }
-        return Self(shoulder: mix(a.shoulder,b.shoulder), across: mix(a.across,b.across), elbow: mix(a.elbow,b.elbow),
-            leadShoulder: mix(a.leadShoulder,b.leadShoulder), leadElbow: mix(a.leadElbow,b.leadElbow),
-            knee: mix(a.knee,b.knee), turn: mix(a.turn,b.turn), lean: mix(a.lean,b.lean), x: mix(a.x,b.x),
-            headX: mix(a.headX,b.headX), headY: mix(a.headY,b.headY), headTurn: mix(a.headTurn,b.headTurn))
-    }
-}
-struct ParametricMotion {
-    let base: BaseMotion
-    let parameters: [String: Double]
-    func p(_ key: String, _ fallback: Double) -> Double { parameters[key] ?? fallback }
-    var backDuration: Double { p("tempoBackSeconds", base == .golfSwing ? 0.84 : (base == .basketballShot ? 0.1 : 0.4)) }
-    var forwardDuration: Double { p("tempoDownSeconds", base == .golfSwing ? 0.28 : 0.3) }
-    var duration: Double { backDuration + forwardDuration + 0.25 + p("followThroughHold", 1.1) + 0.8 }
-    var keyframes: [MotionPose] {
-        var address = MotionPose()
-        address.knee = p("kneeBend", 25)
-        var top = address, contact = address, finish = address
-        if base == .golfSwing {
-            address.lean = 22
-            top.shoulder = 125; top.leadShoulder = 125; top.turn = -p("shoulderTurnDeg",85)
-            top.leadElbow = p("leadElbowBendAtTop",8); top.elbow = 90
-            contact.shoulder = 40; contact.leadShoulder = 40; contact.turn = 25
-            contact.lean = 22 - p("spineTiltLoss",0)
-            finish.shoulder = 150; finish.leadShoulder = 145; finish.turn = 100
-            finish.lean = p("finishLean",0); finish.knee = 5
-        } else if base == .basketballShot {
-            address.shoulder = 65; address.elbow = 95; address.leadShoulder = 65
-            top.shoulder = 125 - p("shotHitch",0); top.elbow = 100
-            contact.shoulder = p("releaseHeight",155); contact.elbow = p("armExtensionAtContact",5)
-            contact.across = p("elbowFlare",4) + p("armAcrossBody",0)
-            contact.leadShoulder = p("guideHandPushes",35); contact.knee = 0
-            finish = contact
-        } else if base == .readyStance || base == .tripod {
-            address.shoulder = p("paddleHeightReady",base == .tripod ? 25 : 65); address.elbow = 65
-            if base == .tripod { address.knee = 0 }
-            address.leadShoulder = 60; top = address; contact = address; finish = address
-            top.knee = address.knee + 5
-        } else {
-            let overhead = base == .tennisServe || base == .pickleballOverhead
-            let dink = base == .pickleballDink
-            let backhand = base == .tennisBackhand
-            address.shoulder = 45; address.elbow = 35
-            top.shoulder = overhead ? 150 : p("backswingSize",dink ? 25 : 80)
-            top.across = backhand ? -75 : 55; top.turn = -p("unitTurnDeg",65)
-            top.elbow = overhead ? 100 : 30
-            contact.shoulder = p("contactHeight", overhead ? 175 : (dink ? 40 : 65))
-            contact.elbow = p("armExtensionAtContact",10); contact.turn = 20
-            contact.across = backhand ? 35 : -30
-            finish.shoulder = p("swingThrough",dink ? 65 : 145); finish.across = -65; finish.turn = 65
-        }
-        top.x = p("hipSlide",0); contact.x = p("drift",0)
-        top.headX = p("headSlide",0); contact.headY = -p("headDrop",0)
-        contact.headTurn = p("headTurnEarly",0); finish.headTurn = contact.headTurn
-        return [address,top,contact,finish,address]
-    }
-    func sample(_ time: Double) -> MotionPose {
-        let original = keyframes
-        let frames = [original[0],original[1],original[2],original[3],original[3],original[4]]
-        let times = [0.0, backDuration, backDuration + forwardDuration,
-                     backDuration + forwardDuration + 0.25,
-                     backDuration + forwardDuration + 0.25 + p("followThroughHold",1.1), duration]
-        for i in 0..<5 where time <= times[i+1] {
-            var f = max(0,min(1,(time-times[i]) / max(0.001,times[i+1]-times[i])))
-            if i == 1 { f = pow(f, p("accelerationProfile",1)) }
-            return .blend(frames[i],frames[i+1],f)
-        }
-        return frames[0]
-    }
-}
-
 struct HologramScene: UIViewRepresentable {
-    let spec: MotionSpec
-    let sport: String
-    let leftHanded: Bool
-    let reduceMotion: Bool
-    let mode: DemoPlayback
-    let replay: Int
-    func makeCoordinator() -> HologramRig { HologramRig(sport: sport, setup: spec.base == .tripod, leftHanded: leftHanded) }
-    func makeUIView(context: Context) -> SCNView {
-        let view = SCNView()
-        view.scene = context.coordinator.scene
-        view.pointOfView = context.coordinator.camera
-        view.backgroundColor = UIColor(red: 0.015, green: 0.035, blue: 0.07, alpha: 1)
-        view.antialiasingMode = .multisampling4X
-        view.autoenablesDefaultLighting = true
-        view.isPlaying = true; view.rendersContinuously = true
+    let cue:DemoCue
+    let leftHanded:Bool, reduceMotion:Bool
+    let mode:DemoPlayback
+    let replay:Int
+    let keyMoment:Bool
+    func makeCoordinator() -> HologramStage { HologramStage(cue:cue,leftHanded:leftHanded) }
+    func makeUIView(context:Context) -> SCNView {
+        let view=SCNView(); view.scene=context.coordinator.scene; view.pointOfView=context.coordinator.camera
+        view.backgroundColor=UIColor(red:0.015,green:0.025,blue:0.05,alpha:1)
+        view.antialiasingMode = .multisampling4X; view.preferredFramesPerSecond=30
+        view.isPlaying=true; view.rendersContinuously=true
+        view.isAccessibilityElement=false; view.accessibilityElementsHidden=true
         return view
     }
-    func updateUIView(_ view: SCNView, context: Context) {
-        let signature = "\(mode.rawValue)-\(replay)-\(reduceMotion)"
-        guard context.coordinator.signature != signature else { return }
-        context.coordinator.signature = signature
-        context.coordinator.play(spec: spec, mode: mode, reduceMotion: reduceMotion)
+    func updateUIView(_ view:SCNView,context:Context) {
+        let signature="\(mode)-\(replay)-\(reduceMotion)-\(keyMoment)"
+        guard signature != context.coordinator.signature else { return }
+        context.coordinator.signature=signature
+        context.coordinator.play(mode:mode,reduceMotion:reduceMotion,keyMoment:keyMoment)
+        view.isPlaying = !keyMoment && !reduceMotion
+        view.rendersContinuously = !keyMoment && !reduceMotion
+        view.setNeedsDisplay()
     }
-    static func dismantleUIView(_ view: SCNView, coordinator: HologramRig) {
-        coordinator.scene.rootNode.removeAllActions(); coordinator.figure.removeAllActions()
-        coordinator.camera.removeAllActions(); view.isPlaying = false
+    static func dismantleUIView(_ view:SCNView,coordinator:HologramStage) {
+        coordinator.scene.rootNode.removeAllActions(); view.isPlaying=false; view.rendersContinuously=false
+        view.scene=nil; view.pointOfView=nil
     }
 }
 
-final class HologramRig {
-    let scene = SCNScene(), figure = SCNNode(), camera = SCNNode(), torso = SCNNode(), head = SCNNode()
-    let rightShoulder = SCNNode(), leftShoulder = SCNNode(), rightElbow = SCNNode(), leftElbow = SCNNode()
-    let rightHip = SCNNode(), leftHip = SCNNode(), rightKnee = SCNNode(), leftKnee = SCNNode()
-    let tripod = SCNNode(), scanline = SCNNode()
-    var materials: [SCNMaterial] = []
-    var signature = ""
-    let setup: Bool
-    init(sport: String, setup: Bool, leftHanded: Bool) {
-        self.setup = setup
-        scene.rootNode.addChildNode(figure); figure.position.y = 0.92
-        if leftHanded { figure.scale.x = -1 }
-        figure.addChildNode(torso)
-        shape(SCNCapsule(capRadius: 0.12, height: 0.58), parent: torso, at: SCNVector3(0,0.29,0))
-        torso.addChildNode(head); head.position = SCNVector3(0,0.78,0)
-        shape(SCNSphere(radius: 0.13), parent: head)
-        shape(SCNSphere(radius: 0.035), parent: head, at: SCNVector3(0,0,0.13))
-        func arm(_ shoulder: SCNNode, _ elbow: SCNNode, x: Float) -> SCNNode {
-            torso.addChildNode(shoulder); shoulder.position = SCNVector3(x,0.55,0)
-            shape(SCNSphere(radius: 0.065), parent: shoulder)
-            shape(SCNCapsule(capRadius: 0.045,height: 0.3), parent: shoulder, at: SCNVector3(0,-0.15,0))
-            shoulder.addChildNode(elbow); elbow.position.y = -0.3
-            shape(SCNSphere(radius: 0.06), parent: elbow)
-            shape(SCNCapsule(capRadius: 0.035,height: 0.3), parent: elbow, at: SCNVector3(0,-0.15,0))
-            let hand = SCNNode(); elbow.addChildNode(hand); hand.position.y = -0.3
-            shape(SCNSphere(radius: 0.06), parent: hand)
-            return hand
+/// Lit translucent volume plus Fresnel emission keeps the silhouette readable through the ghost.
+final class HologramFigure {
+    let root=SCNNode(), implement=SCNNode(), head=SCNNode(), ball=SCNNode()
+    var joints:[String:SCNNode]=[:], bones:[String:SCNNode]=[:]
+    var materials:[SCNMaterial]=[]
+    let sport:String
+    static let links=[("pelvis","chest"),("l_shoulder","r_shoulder"),("chest","head"),
+        ("l_shoulder","l_elbow"),("l_elbow","l_wrist"),("r_shoulder","r_elbow"),("r_elbow","r_wrist"),
+        ("l_hip","r_hip"),("l_hip","l_knee"),("l_knee","l_ankle"),("r_hip","r_knee"),("r_knee","r_ankle")]
+    init(sport:String,leftHanded:Bool,wrong:Bool) {
+        self.sport=sport
+        if leftHanded { root.scale.x = -1 }
+        for name in ["pelvis","chest","l_shoulder","r_shoulder","l_elbow","r_elbow","l_wrist","r_wrist","l_hip","r_hip","l_knee","r_knee","l_ankle","r_ankle"] {
+            let radius:CGFloat = name.contains("wrist") ? 0.028 : 0.034
+            let node=SCNNode(geometry:SCNSphere(radius:radius)); root.addChildNode(node); joints[name]=node; decorate(node,wrong:wrong)
         }
-        let hand = arm(rightShoulder,rightElbow,x: 0.23)
-        _ = arm(leftShoulder,leftElbow,x: -0.23)
-        for (hip,knee,x) in [(leftHip,leftKnee,Float(-0.13)),(rightHip,rightKnee,Float(0.13))] {
-            figure.addChildNode(hip); hip.position.x = x
-            shape(SCNSphere(radius: 0.065), parent: hip)
-            shape(SCNCapsule(capRadius: 0.065,height: 0.43), parent: hip, at: SCNVector3(0,-0.215,0))
-            hip.addChildNode(knee); knee.position.y = -0.43
-            shape(SCNSphere(radius: 0.065), parent: knee)
-            shape(SCNCapsule(capRadius: 0.045,height: 0.42), parent: knee, at: SCNVector3(0,-0.21,0))
-            shape(SCNSphere(radius: 0.055), parent: knee, at: SCNVector3(0,-0.42,0))
-            shape(SCNBox(width: 0.1,height: 0.06,length: 0.22,chamferRadius: 0.03), parent: knee, at: SCNVector3(0,-0.45,0.07))
+        for (a,b) in Self.links {
+            let radius:CGFloat = a == "pelvis" ? 0.12 : (a.contains("hip") && b.contains("knee") ? 0.043 : 0.028)
+            let node=SCNNode(geometry:SCNCapsule(capRadius:radius,height:1)); root.addChildNode(node); bones[a+b]=node; decorate(node,wrong:wrong)
         }
-        if sport == "basketball" {
-            shape(SCNSphere(radius: 0.12), parent: hand, at: SCNVector3(0,-0.12,0))
-        } else {
-            let length: CGFloat = sport == "golf" ? 0.85 : 0.3
-            shape(SCNCylinder(radius: 0.015,height: length), parent: hand, at: SCNVector3(0,-Float(length)/2,0))
-            if sport == "golf" {
-                shape(SCNBox(width: 0.15,height: 0.06,length: 0.07,chamferRadius: 0.01), parent: hand, at: SCNVector3(0.045,-0.85,0))
-            } else {
-                let implement = SCNNode(geometry: sport == "tennis" ? SCNTorus(ringRadius: 0.13,pipeRadius: 0.012) : SCNBox(width: 0.23,height: 0.3,length: 0.025,chamferRadius: 0.08))
-                implement.position.y = -0.43
-                if sport == "tennis" { implement.eulerAngles.x = .pi / 2 }
-                decorate(implement); hand.addChildNode(implement)
-            }
+        head.geometry=SCNSphere(radius:0.105); head.scale=SCNVector3(0.83,1.14,0.94); root.addChildNode(head); decorate(head,wrong:wrong)
+        let nose=SCNNode(geometry:SCNCone(topRadius:0,bottomRadius:0.018,height:0.036)); nose.position=SCNVector3(0,-0.01,0.10); nose.eulerAngles.x = .pi/2
+        head.addChildNode(nose); decorate(nose,wrong:wrong)
+        // Eye line gives head-direction cues an unambiguous orientation landmark.
+        let eyes=SCNNode(geometry:SCNBox(width:0.12,height:0.012,length:0.015,chamferRadius:0.003)); eyes.position=SCNVector3(0,0.02,0.085)
+        head.addChildNode(eyes); decorate(eyes,wrong:wrong)
+        for side in ["l","r"] {
+            let foot=SCNNode(geometry:SCNBox(width:0.085,height:0.06,length:0.23,chamferRadius:0.025))
+            root.addChildNode(foot); joints[side+"_foot"]=foot; decorate(foot,wrong:wrong)
+            let palm=SCNNode(geometry:SCNCapsule(capRadius:0.025,height:0.08))
+            root.addChildNode(palm); joints[side+"_palm"]=palm; decorate(palm,wrong:wrong)
         }
-        for i in -6...6 {
-            for axis in 0...1 {
-                let line = SCNNode(geometry: SCNBox(width: axis == 0 ? 6 : 0.005,height: 0.003,length: axis == 0 ? 0.005 : 6,chamferRadius: 0))
-                line.position = SCNVector3(axis == 0 ? 0 : Float(i)*0.5,0,axis == 0 ? Float(i)*0.5 : 0)
-                let material = SCNMaterial(); material.diffuse.contents = UIColor.cyan.withAlphaComponent(0.12)
-                material.lightingModel = .constant; line.geometry?.materials = [material]
-                scene.rootNode.addChildNode(line)
-            }
-        }
-        scanline.geometry = SCNBox(width: 1.4,height: 0.008,length: 0.8,chamferRadius: 0)
-        let shimmer = SCNMaterial(); shimmer.diffuse.contents = UIColor.black
-        shimmer.emission.contents = UIColor(red: 0, green: 0.12, blue: 0.16, alpha: 1); shimmer.lightingModel = .constant
-        shimmer.transparency = 0.1; shimmer.blendMode = .add; scanline.geometry?.materials = [shimmer]
-        scene.rootNode.addChildNode(scanline)
-        if setup {
-            scene.rootNode.addChildNode(tripod)
-            shape(SCNCylinder(radius: 0.025,height: 1), parent: tripod, at: SCNVector3(0,0.5,0))
-            for angle in [Float(0),Float(2.1),Float(4.2)] {
-                let leg = SCNNode(); tripod.addChildNode(leg); leg.position.y = 0.3; leg.eulerAngles = SCNVector3(0,angle,0.6)
-                shape(SCNCylinder(radius: 0.015,height: 0.6), parent: leg, at: SCNVector3(0,-0.3,0))
-            }
-            shape(SCNBox(width: 0.14,height: 0.26,length: 0.025,chamferRadius: 0.025), parent: tripod, at: SCNVector3(0,1.12,0))
-        }
-        camera.camera = SCNCamera(); camera.camera?.zFar = 100
-        scene.rootNode.addChildNode(camera)
-        camera.position = setup ? SCNVector3(5,3.5,7) : SCNVector3(2.7,2.1,4.1)
-        camera.look(at: SCNVector3(0,0.9,setup ? 1.5 : 0))
-        apply(MotionPose())
-    }
-    func decorate(_ node: SCNNode) {
-        let material = SCNMaterial(); material.lightingModel = .constant
-        material.diffuse.contents = UIColor.black; material.emission.contents = UIColor.cyan
-        material.blendMode = .add; material.transparency = 0.65; material.isDoubleSided = true
-        node.geometry?.materials = [material]; materials.append(material)
-    }
-    func shape(_ geometry: SCNGeometry, parent: SCNNode, at: SCNVector3 = SCNVector3Zero) {
-        let node = SCNNode(geometry: geometry); node.position = at; decorate(node); parent.addChildNode(node)
-    }
-    func apply(_ p: MotionPose) {
-        func radians(_ d: Double) -> Float { Float(d * .pi / 180) }
-        rightShoulder.eulerAngles = SCNVector3(-radians(p.shoulder),0,radians(p.across))
-        leftShoulder.eulerAngles = SCNVector3(-radians(p.leadShoulder),0,0)
-        rightElbow.eulerAngles.x = -radians(p.elbow); leftElbow.eulerAngles.x = -radians(p.leadElbow)
-        for hip in [leftHip,rightHip] { hip.eulerAngles.x = -radians(p.knee / 2) }
-        for knee in [leftKnee,rightKnee] { knee.eulerAngles.x = radians(p.knee) }
-        torso.eulerAngles = SCNVector3(radians(p.lean),radians(p.turn),0)
-        figure.position.x = Float(p.x); figure.position.y = 0.92 - Float(p.knee / 500)
-        head.position = SCNVector3(Float(p.headX),0.78 + Float(p.headY),0)
-        head.eulerAngles.y = radians(p.headTurn)
-    }
-    func play(spec: MotionSpec, mode: DemoPlayback, reduceMotion: Bool) {
-        figure.removeAllActions(); camera.removeAllActions(); scanline.removeAllActions()
-        let variants: [Bool] = mode == .both ? [true,false] : [mode == .wrong]
-        var actions: [SCNAction] = []
-        for wrong in variants {
-            let parameters = wrong ? spec.wrong : spec.correct
-            let motion = ParametricMotion(base: spec.base,parameters: parameters)
-            let configure = SCNAction.run { [weak self] _ in
-                guard let self = self else { return }
-                let color = wrong ? UIColor.systemOrange : UIColor.cyan
-                for m in self.materials { m.diffuse.contents = UIColor.black; m.emission.contents = color }
-                if self.setup {
-                    self.tripod.position.z = Float(parameters["tripodDistance"] ?? 3.5)
-                    self.tripod.scale.y = Float(parameters["tripodHeight"] ?? 1.3) / 1.12
+        root.addChildNode(implement)
+        if sport == "golf" {
+            part(SCNCylinder(radius:0.009,height:1.1),at:SCNVector3(0,0.55,0),wrong:wrong)
+            part(SCNCylinder(radius:0.016,height:0.20),at:SCNVector3(0,0.10,0),wrong:wrong)
+            part(SCNBox(width:0.10,height:0.06,length:0.065,chamferRadius:0.018),at:SCNVector3(0.025,1.09,0),wrong:wrong)
+        } else if sport != "basketball" {
+            let length:CGFloat = sport == "tennis" ? 0.69 : 0.40
+            part(SCNCylinder(radius:0.014,height:sport == "tennis" ? 0.30 : 0.13),at:SCNVector3(0,sport == "tennis" ? 0.15 : 0.065,0),wrong:wrong)
+            if sport == "tennis" {
+                let frame=SCNNode(geometry:SCNTorus(ringRadius:0.12,pipeRadius:0.008)); frame.position.y=0.49
+                frame.scale=SCNVector3(1,1,1.5); frame.eulerAngles.x = .pi/2; implement.addChildNode(frame); decorate(frame,wrong:wrong)
+                for i in -4...4 {
+                    let string=SCNNode(geometry:SCNBox(width:0.19,height:0.003,length:0.003,chamferRadius:0))
+                    string.position=SCNVector3(0,0.49+Float(i)*0.035,0); implement.addChildNode(string); decorate(string,wrong:wrong)
                 }
-                self.apply(motion.sample(reduceMotion ? motion.backDuration + motion.forwardDuration : 0))
-            }
-            if reduceMotion {
-                actions += [.fadeOut(duration: 0.2),configure,.fadeIn(duration: 0.2),.wait(duration: 2)]
-            } else {
-                actions += [configure,.customAction(duration: motion.duration) { [weak self] _,time in self?.apply(motion.sample(Double(time))) }]
+            } else { part(SCNBox(width:0.20,height:length-0.13,length:0.018,chamferRadius:0.055),at:SCNVector3(0,0.265,0),wrong:wrong) }
+        }
+        ball.geometry=SCNSphere(radius:sport == "basketball" ? 0.12 : 0.033)
+        root.addChildNode(ball); decorate(ball,wrong:wrong)
+    }
+    func part(_ geometry:SCNGeometry,at:SCNVector3,wrong:Bool) {
+        let n=SCNNode(geometry:geometry); n.position=at; implement.addChildNode(n); decorate(n,wrong:wrong)
+    }
+    func decorate(_ node:SCNNode,wrong:Bool) {
+        if let material=materials.first { node.geometry?.materials=[material]; return }
+        let m=SCNMaterial(); m.lightingModel = .blinn; m.diffuse.contents=wrong ? UIColor(red:0.28,green:0.06,blue:0.01,alpha:1) : UIColor(red:0.01,green:0.16,blue:0.20,alpha:1)
+        m.emission.contents=wrong ? UIColor(red:0.7,green:0.19,blue:0.02,alpha:1) : UIColor(red:0.02,green:0.48,blue:0.58,alpha:1)
+        m.transparency=0.6; m.blendMode = .add; m.writesToDepthBuffer=false; m.isDoubleSided=false
+        m.shaderModifiers=[.surface: """
+        #pragma body
+        float edge = pow(1.0 - abs(dot(normalize(_surface.normal), normalize(_surface.view))), 2.8);
+        float band = 0.5 + 0.5 * sin(_surface.position.y * 38.0 - u_time * 2.2);
+        _surface.emission.rgb *= 0.38 + edge * 1.5 + band * 0.10;
+        _surface.diffuse.a *= 0.65;
+        """
+        ]
+        node.geometry?.materials=[m]; materials.append(m)
+    }
+    func apply(_ p:DemoPose,base:BaseMotion,still:Bool) {
+        let s=DemoSkeleton(p:p,base:base)
+        for (name,node) in joints {
+            if let point=s.points[name] { node.simdPosition=point }
+            if name.hasSuffix("_foot"), let ankle=s.points[String(name.prefix(1))+"_ankle"] { node.simdPosition=ankle+SIMD3(0,-0.025,0.065) }
+            if name.hasSuffix("_palm"), let wrist=s.points[String(name.prefix(1))+"_wrist"] { node.simdPosition=wrist; node.simdOrientation=simd_quatf(from:SIMD3(0,1,0),to:s.shaft) }
+        }
+        if sport == "basketball", let palm=joints["r_palm"] {
+            palm.simdOrientation=simd_quatf(angle:p.wristSnap*Float.pi*0.65,axis:SIMD3(1,0,0))
+        }
+        for (a,b) in Self.links {
+            if let from=s.points[a],let to=s.points[b],let n=bones[a+b] { Self.segment(n,from:from,to:to) }
+        }
+        head.simdPosition=s.points["head"]!; head.simdOrientation=DemoSkeleton.rotation(p.headYaw,base == .golfSwing ? p.spine : 0)
+        implement.simdPosition=s.grip; implement.simdOrientation=simd_quatf(from:SIMD3(0,1,0),to:s.shaft)
+        implement.isHidden=sport == "basketball" || base == .tripod
+        ball.simdPosition=s.ball; ball.isHidden=base == .tripod || base == .readyStance
+        if base == .golfSwing {
+            let address=DemoSkeleton(p:DemoMotion(base:.golfSwing,parameters:[:]).frames[0],base:.golfSwing)
+            ball.simdPosition=address.grip+address.shaft*1.1; ball.scale=SCNVector3(0.64,0.64,0.64)
+        }
+    }
+    static func segment(_ n:SCNNode,from:SIMD3<Float>,to:SIMD3<Float>) {
+        let v=to-from
+        guard simd_length(v)>0.00001 else { n.isHidden=true; return }
+        n.isHidden=false; n.simdPosition=(from+to)/2; n.simdScale=SIMD3(1,simd_length(v),1)
+        n.simdOrientation=simd_quatf(from:SIMD3(0,1,0),to:simd_normalize(v))
+    }
+}
+
+final class HologramStage {
+    let scene=SCNScene(), camera=SCNNode(), arc=SCNNode(), ring=SCNNode()
+    let correct:HologramFigure, wrong:HologramFigure
+    let cue:DemoCue, spec:MotionSpec
+    var signature=""
+    var setupNodes:[SCNNode]=[]
+    var angleLabel=SCNNode()
+    init(cue:DemoCue,leftHanded:Bool) {
+        self.cue=cue; spec=DemoMotionTable.entries[cue.key]!
+        correct=HologramFigure(sport:cue.sport,leftHanded:leftHanded,wrong:false)
+        wrong=HologramFigure(sport:cue.sport,leftHanded:leftHanded,wrong:true)
+        scene.rootNode.addChildNode(wrong.root); scene.rootNode.addChildNode(correct.root)
+        let ambient=SCNNode(); ambient.light=SCNLight(); ambient.light?.type = .ambient; ambient.light?.intensity=280; scene.rootNode.addChildNode(ambient)
+        let light=SCNNode(); light.light=SCNLight(); light.light?.type = .omni; light.light?.intensity=600; light.position=SCNVector3(2,4,3); scene.rootNode.addChildNode(light)
+        for i in -12...12 {
+            for axis in 0...1 {
+                let line=SCNNode(geometry:SCNBox(width:axis == 0 ? 12 : 0.003,height:0.002,length:axis == 0 ? 0.003 : 12,chamferRadius:0))
+                line.position=SCNVector3(axis == 0 ? 0 : Float(i)*0.5,0,axis == 0 ? Float(i)*0.5 : 0)
+                glow(line,UIColor(red:0,green:0.08,blue:0.10,alpha:1)); scene.rootNode.addChildNode(line)
             }
         }
-        figure.runAction(.repeatForever(.sequence(actions)))
-        scanline.isHidden = reduceMotion
-        if !reduceMotion {
-            scanline.position.y = 0.05
-            scanline.runAction(.repeatForever(.sequence([.move(to: SCNVector3(0,1.9,0),duration: 2.5),.move(to: SCNVector3(0,0.05,0),duration: 0)])))
-            camera.runAction(.repeatForever(.customAction(duration: 12) { [weak self] node,time in
-                guard let self = self else { return }
-                let angle = 0.5 + sin(Double(time) / 12 * .pi * 2) * 0.18
-                let distance = self.setup ? 8.5 : 4.9
-                node.position = SCNVector3(Float(sin(angle)*distance),self.setup ? 3.5 : 2.1,Float(cos(angle)*distance))
-                node.look(at: SCNVector3(0,0.9,self.setup ? 1.5 : 0))
-            }))
+        ring.geometry=SCNTorus(ringRadius:0.65,pipeRadius:0.008); ring.position.y=0.015
+        glow(ring,UIColor(red:0,green:0.35,blue:0.45,alpha:1)); scene.rootNode.addChildNode(ring)
+        scene.rootNode.addChildNode(arc)
+        camera.camera=SCNCamera(); camera.camera?.zFar=80; camera.camera?.bloomIntensity=0.8; camera.camera?.bloomThreshold=0.65; camera.camera?.bloomBlurRadius=6
+        camera.camera?.wantsHDR=true; camera.camera?.exposureAdaptationBrighteningSpeedFactor=0; camera.camera?.exposureAdaptationDarkeningSpeedFactor=0
+        scene.rootNode.addChildNode(camera)
+        setCamera(0)
+    }
+    func glow(_ node:SCNNode,_ color:UIColor) {
+        let m=SCNMaterial(); m.lightingModel = .constant; m.diffuse.contents=UIColor.black; m.emission.contents=color
+        m.blendMode = .add; m.writesToDepthBuffer=false; node.geometry?.materials=[m]
+    }
+    func text(_ text:String,at:SCNVector3,color:UIColor) -> SCNNode {
+        let g=SCNText(string:text,extrusionDepth:0); g.font=UIFont.systemFont(ofSize:1,weight:.medium); g.flatness=0.2
+        let n=SCNNode(geometry:g); n.scale=SCNVector3(0.065,0.065,0.065); n.position=at
+        glow(n,color); n.constraints=[SCNBillboardConstraint()]; scene.rootNode.addChildNode(n); return n
+    }
+    func setCamera(_ time:Float) {
+        let setup=spec.base == .tripod
+        let angle:Float = setup ? 2.2 : 0.72 + sin(time*0.14)*0.12
+        let radius:Float=setup ? 6 : 3.7
+        camera.position=SCNVector3(sin(angle)*radius,setup ? 2.6 : 2.15,cos(angle)*radius)
+        camera.look(at:SCNVector3(0,setup ? 0.9 : 1,setup ? 1.2 : 0))
+    }
+    /// A shared, fixed phase for positional cues; timing cues compare the same elapsed seconds.
+    func reviewTime(_ motion:DemoMotion) -> Float {
+        let key=cue.key
+        if key.contains("leg_drive") { return 0 }
+        if key.contains("rhythm") { let good=DemoMotion(base:spec.base,parameters:spec.correct); return good.back+good.down }
+        if key.contains("tempo") { return DemoMotion(base:spec.base,parameters:spec.correct).back+0.15 }
+        if key.contains("follow_through") || key.contains("swing_through") || key.contains("finish_balance") || key.contains("arm_verticality") { return motion.back+motion.hitch+motion.down+0.75 }
+        if key.contains("head_lift") || key.contains("contact") || key.contains("head_stability") || key.contains("drift") || key.contains("guide_hand") || key.contains("elbow_extension") || key.contains("release_height") { return motion.back+motion.hitch+motion.down }
+        return motion.back
+    }
+    func rotationGuide(_ p:DemoPose) {
+        guard cue.key.contains("shoulder_turn") || cue.key.contains("hip_sway") else { return }
+        if arc.childNodes.isEmpty {
+            for _ in 0..<32 {
+                let n=SCNNode(geometry:SCNCylinder(radius:0.004,height:1)); glow(n,.cyan); arc.addChildNode(n)
+            }
+            angleLabel=text("",at:SCNVector3(-0.6,0.16,0.8),color:.cyan)
         }
+        let degrees=cue.key.contains("hip_sway") ? p.hipTurn : p.shoulderTurn
+        let angle=abs(degrees)*Float.pi/180
+        for i in 0..<32 {
+            let a=Float(i)/32*angle,b=Float(i+1)/32*angle
+            let n=arc.childNodes[i]
+            HologramFigure.segment(n,from:SIMD3(sin(a)*0.75,0.025,cos(a)*0.75),to:SIMD3(sin(b)*0.75,0.025,cos(b)*0.75))
+        }
+        (angleLabel.geometry as? SCNText)?.string=cue.key.contains("hip_sway") ? "\(Int(abs(degrees)))° hips • \(Int(abs(p.pelvisX)*100)) cm shift" : "\(Int(abs(degrees)))° shoulder turn"
+    }
+    func setup(parameters:[String:Double],wrong:Bool,clear:Bool=true) {
+        if clear { setupNodes.forEach { $0.removeFromParentNode() }; setupNodes=[] }
+        let distance=Float(parameters["tripodDistance"] ?? 3.5), height=Float(parameters["tripodHeight"] ?? 1.3)
+        let color=wrong ? UIColor.orange : UIColor.cyan
+        func add(_ g:SCNGeometry,_ p:SIMD3<Float>) -> SCNNode {
+            let n=SCNNode(geometry:g); n.simdPosition=p; glow(n,color); scene.rootNode.addChildNode(n); setupNodes.append(n); return n
+        }
+        let centre=SIMD3<Float>(0,height,distance)
+        _=add(SCNBox(width:0.18,height:0.32,length:0.035,chamferRadius:0.025),centre)
+        let screen=add(SCNBox(width:0.145,height:0.26,length:0.003,chamferRadius:0.013),centre+SIMD3(0,0,-0.020))
+        screen.opacity=0.30
+        _=add(SCNSphere(radius:0.018),centre+SIMD3(-0.055,0.10,-0.025))
+        let pole=add(SCNCylinder(radius:0.025,height:1),SIMD3(0,height/2,distance)); pole.simdScale.y=height
+        for angle:Float in [0,2.094,4.188] {
+            let leg=add(SCNCylinder(radius:0.018,height:1),SIMD3.zero)
+            HologramFigure.segment(leg,from:SIMD3(0,0.38,distance),to:SIMD3(sin(angle)*0.35,0.02,distance+cos(angle)*0.35))
+        }
+        // Four transparent frustum faces, physically projected at the athlete's plane.
+        let vertical:Float=0.45, halfHeight=distance*vertical, halfWidth=halfHeight*0.48
+        let corners=[SIMD3<Float>(-halfWidth,height-halfHeight,0),SIMD3(halfWidth,height-halfHeight,0),
+                     SIMD3(halfWidth,height+halfHeight,0),SIMD3(-halfWidth,height+halfHeight,0)]
+        for i in 0..<4 {
+            let vertices=[SCNVector3(centre),SCNVector3(corners[i]),SCNVector3(corners[(i+1)%4])]
+            let indices:[Int32]=[0,1,2]
+            let geometry=SCNGeometry(sources:[SCNGeometrySource(vertices:vertices)],elements:[SCNGeometryElement(indices:indices,primitiveType:.triangles)])
+            let n=add(geometry,.zero); n.opacity=0.035; n.geometry?.firstMaterial?.isDoubleSided=true
+            let edge=add(SCNCylinder(radius:0.004,height:1),.zero)
+            HologramFigure.segment(edge,from:centre,to:corners[i]); edge.opacity=0.2
+        }
+        let label=text(wrong ? "1 m • too close / low" : (cue.sport == "tennis" ? "4–6 m" : (cue.sport == "golf" ? "3–4 m" : "3–5 m")),at:SCNVector3(0.12,0.18,distance/2),color:color)
+        label.scale=SCNVector3(0.13,0.13,0.13)
+        setupNodes.append(label)
+        if wrong {
+            let cutoff=add(SCNSphere(radius:0.135),SIMD3(0,1.64,0)); cutoff.geometry?.firstMaterial?.emission.contents=UIColor.red
+            cutoff.opacity=0.5
+            setupNodes.append(text("Head outside frame",at:SCNVector3(-0.45,1.95,0),color:.red))
+        }
+    }
+    func play(mode:DemoPlayback,reduceMotion:Bool,keyMoment:Bool) {
+        scene.rootNode.removeAllActions()
+        let bad=DemoMotion(base:spec.base,parameters:spec.wrong), good=DemoMotion(base:spec.base,parameters:spec.correct)
+        for figure in [correct,wrong] {
+            for material in figure.materials {
+                if let surface=material.shaderModifiers?[.surface] {
+                    material.shaderModifiers=[.surface:reduceMotion ? surface.replacingOccurrences(of:"u_time * 2.2",with:"0.0") : surface.replacingOccurrences(of:"38.0 - 0.0",with:"38.0 - u_time * 2.2")]
+                }
+            }
+        }
+        correct.root.isHidden=mode == .wrong; wrong.root.isHidden=mode == .correct
+        wrong.root.opacity=mode == .both ? 0.28 : 1; wrong.root.position.z=mode == .both ? -0.12 : 0
+        func draw(_ t:Float) {
+            let freeze=keyMoment || reduceMotion
+            let gt=freeze ? reviewTime(good) : t, bt=freeze ? reviewTime(bad) : t
+            let gp=good.sample(gt),bp=bad.sample(bt)
+            correct.apply(gp,base:spec.base,still:freeze); wrong.apply(bp,base:spec.base,still:freeze)
+            setCamera(freeze ? 0 : t)
+            rotationGuide(mode == .wrong ? bp : gp)
+        }
+        draw(0)
+        if spec.base == .tripod {
+            setup(parameters:mode == .wrong ? spec.wrong : spec.correct,wrong:mode == .wrong)
+            if mode == .both {
+                let first=setupNodes.count
+                setup(parameters:spec.wrong,wrong:true,clear:false)
+                for node in setupNodes.dropFirst(first) { node.opacity *= 0.28 }
+            }
+        }
+        else { setupNodes.forEach { $0.removeFromParentNode() }; setupNodes=[] }
+        if keyMoment { return }
+        if reduceMotion {
+            scene.rootNode.runAction(.repeatForever(.sequence([.fadeOpacity(to:0.8,duration:0.3),.fadeOpacity(to:1,duration:0.3),.wait(duration:2)])))
+            return
+        }
+        let loop=max(bad.duration,good.duration)+0.4
+        scene.rootNode.runAction(.repeatForever(.customAction(duration:TimeInterval(loop)) { [weak self] _,elapsed in
+            guard let self=self else { return }; draw(Float(elapsed))
+            let flicker=0.96+0.04*sin(Float(elapsed)*9)
+            self.correct.root.opacity=CGFloat(flicker)
+        }))
     }
 }
