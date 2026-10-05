@@ -8,11 +8,12 @@ final class FormCoachFlowTests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
         let backend = ProcessInfo.processInfo.environment["FORMCOACH_UI_TEST_BACKEND"] ?? "http://127.0.0.1:18004"
-        app.launchArguments = ["-uiTesting", "-resetTestAccount", "-backendURL", backend, "-offerMovementDemos", "YES", "-resetTrainingChoices"]
+        app.launchArguments = ["-uiTesting", "-resetTestAccount", "-backendURL", backend, "-offerMovementDemos", "YES", "-resetTrainingChoices", "-resetScoreboard"]
         app.launch()
     }
 
     private func shot(_ name: String) {
+        usleep(500_000) // Capture the settled HUD rather than a transition frame.
         let a = XCTAttachment(screenshot: app.screenshot())
         a.name = name
         a.lifetime = .keepAlways
@@ -52,11 +53,40 @@ final class FormCoachFlowTests: XCTestCase {
         XCTAssertTrue(golf.waitForExistence(timeout: 20), "home screen with sport cards")
         shot("2-home")
         golf.tap()
+        XCTAssertTrue(app.buttons["training.start"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["End session"].exists)
+        shot("2a-preparation")
+        app.buttons["Back"].tap()
+        XCTAssertTrue(app.navigationBars["Practise"].waitForExistence(timeout: 10))
+        XCTAssertTrue(golf.label.contains("0 sessions"), "Backing out creates no session")
+        XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'waiting to sync'")).firstMatch.exists)
+        golf.tap()
+        XCTAssertTrue(app.buttons["training.start"].waitForExistence(timeout: 10))
+        app.buttons["training.start"].tap()
 
         let end = app.buttons["End session"]
         XCTAssertTrue(end.waitForExistence(timeout: 20))
         let cueDemo = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'demo.show.golf.'")).firstMatch
         XCTAssertTrue(cueDemo.waitForExistence(timeout: 40))
+        XCTAssertTrue(app.staticTexts["REPS"].exists)
+        XCTAssertTrue(app.staticTexts["SCORE"].exists)
+        shot("3a-scoreboard-full")
+        app.buttons["scoreboard.minimize"].tap()
+        XCTAssertTrue(app.buttons["scoreboard.show"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["REPS"].exists)
+        shot("3a-scoreboard-minimized")
+        app.buttons["scoreboard.show"].tap()
+        XCTAssertTrue(app.staticTexts["SCORE"].waitForExistence(timeout: 5))
+        app.buttons["scoreboard.minimize"].tap()
+        XCTAssertTrue(app.buttons["scoreboard.hide"].waitForExistence(timeout: 5))
+        app.buttons["scoreboard.hide"].tap()
+        XCTAssertTrue(app.buttons["scoreboard.show"].exists)
+        XCTAssertFalse(app.buttons["scoreboard.hide"].exists)
+        shot("3a-scoreboard-hidden")
+        app.buttons["scoreboard.show"].tap()
+        XCTAssertTrue(app.staticTexts["REPS"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["SCORE"].exists)
+        shot("3a-scoreboard-restored")
         cueDemo.tap()
         XCTAssertTrue(app.buttons["hologram.close"].waitForExistence(timeout: 10))
         sleep(1)
@@ -132,7 +162,7 @@ final class FormCoachFlowTests: XCTestCase {
         XCTAssertTrue(app.buttons["training.start"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["training.camera"].label.contains("From behind"))
         XCTAssertTrue(app.buttons["training.type"].label.contains("Serve"))
-        app.buttons["Cancel"].tap()
+        app.buttons["Back"].tap()
     }
 }
 

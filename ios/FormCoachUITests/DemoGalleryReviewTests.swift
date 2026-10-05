@@ -10,7 +10,10 @@ final class DemoGalleryReviewTests:XCTestCase {
         app.launchArguments=["-uiTesting","-resetTestAccount","-demoGallery","-backendURL","http://127.0.0.1:18004"]
         app.launch()
         let gallery=app.buttons["demo.gallery"]
-        for _ in 0..<12 { if gallery.isHittable { break }; app.swipeUp() }
+        for _ in 0..<12 {
+            if gallery.isHittable, gallery.frame.maxY < app.frame.height - 70 { break }
+            app.swipeUp()
+        }
         XCTAssertTrue(gallery.waitForExistence(timeout:10)); gallery.tap()
         let url=try XCTUnwrap(Bundle(for:Self.self).url(forResource:"cue_catalog",withExtension:"json"))
         let entries=try XCTUnwrap(JSONSerialization.jsonObject(with:Data(contentsOf:url)) as? [[String:Any]])

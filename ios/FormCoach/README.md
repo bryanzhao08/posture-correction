@@ -319,3 +319,34 @@ Coach review is still appropriate for the stylized free-arm reach and finish-elb
 for the staggered stance used to illustrate loading and transfer; these illustrate cue differences
 rather than establish athlete-level biomechanics. Existing serve/backhand sequencing caveats
 above still apply.
+
+## Batch 6: scoreboard and explicit session start
+
+Every sport card now opens preparation first: sport name, camera placement and its setup demo;
+tennis keeps its training/view choices on this screen. The bottom Start session button creates
+the live session controller and begins capture/setup/countdown. Back dismisses preparation
+without creating a recording, local session or upload.
+
+The central scoreboard has equal columns for REPS and SCORE, using the same scaled heavy rounded
+monospaced number font and a thin divider. Before a completed rep, SCORE is an em dash. The state
+pill remains at the top. The full panel retains the coaching cue and demo prompt. Minimize
+replaces the panel with a top pill; tapping that pill restores it. Its close button hides the
+numbers and leaves a restore button. `@AppStorage("scoreboardMode")` remembers the choice.
+Compact mode shows a single-line cue for four seconds after a rep; hidden mode omits it.
+Transitions respect Reduce Motion; scoring, feedback and capture continue independently.
+
+Changed files: `Views/SessionView.swift`, `Views/TrainingSessionFlow.swift`,
+`Demos/CoachingInstruction.swift` (camera text accessibility identifier), `App/AppState.swift`
+(DEBUG Simulator test preference reset), both UI test files (flow assertions and gallery
+scroll positioning), and this README.
+
+Verification: `build-for-testing` passed on iPhone 16 Pro / iOS 18.5. All eleven test methods
+passed in `/tmp/formcoach-codex/batch6/tests-final.xcresult` (the slow gallery used the thirteen
+new tennis entries; full 52-entry coverage was verified in batch 5). The final flow-only rerun
+passed in `batch6/flow-reviewed.xcresult`, with settled screenshot capture and an additional
+assertion that backing out leaves zero sessions and no pending-upload notice. It verifies
+REPS/SCORE, minimize, compact-pill restore, hide/restore, replay, sync and tennis preferences.
+Six preparation/HUD screenshots were exported to `batch6/screenshots/` and visually inspected.
+The initial Simulator run displayed blank content despite a populated accessibility hierarchy;
+a Simulator reboot restored rendering. A test launch-argument override that locked the stored
+scoreboard preference was replaced by an explicit DEBUG-only reset. All final checks passed.

@@ -36,13 +36,14 @@ enum DemoCatalog {
     let sport: String
     let scope: String
     var setup = false
+    var textIdentifier = "coaching.text"
     @EnvironmentObject private var state: AppState
     @AppStorage("offerMovementDemos") private var offersEnabled = true
     @ObservedObject private var offers = DemoOffers.shared
     @EnvironmentObject private var presenter: DemoPresenter
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(text)
+            Text(text).accessibilityIdentifier(textIdentifier)
             if offersEnabled, let cue = DemoCatalog.entry(text, sport: sport, setup: setup) {
                 let declined = offers.declined.contains(scope + cue.key)
                 if !declined { Text("Want to see what this means?").font(.caption).foregroundStyle(.secondary) }
