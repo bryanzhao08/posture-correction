@@ -22,6 +22,26 @@ TRAIN = {
     "tennis": lambda t: t["expert"] and t["subject"] <= 49,
 }
 LOADERS = {"golf": datasets.golfdb, "basketball": datasets.spl, "tennis": datasets.thetis}
+
+# Camera views fitted on Penn Action's human-labelled tennis clips (one clip in four held out).
+PENN_TENNIS = {"tennis_forehand": "forehand", "tennis_serve": "serve"}
+
+
+def penn_train(name: str) -> bool:
+    return int(name.split("_")[-1]) % 4 != 0
+
+
+def penn_view_reps(view: str, profiles: dict, keep) -> list:
+    reps = []
+    for name, rec, truth in datasets.penn_action(set(PENN_TENNIS)):
+        if truth["view"] != view or not keep(name):
+            continue
+        stroke = PENN_TENNIS[truth["action"]]
+        eng = analyze_recording(dict(rec, sport="tennis", view=view, focus="serve" if stroke == "serve" else None), profiles)
+        reps.extend(r for r in eng.reps if r.type == stroke)
+    return reps
+
+
 SOURCES = {"golf": "GolfDB pros", "basketball": "SPL free throws", "tennis": "THETIS experts"}
 
 
@@ -48,10 +68,17 @@ def collect(sport: str, profiles: dict, keep) -> list:
     return reps
 
 
-def fit(sport: str, profiles: dict) -> None:
-    reps = collect(sport, profiles, TRAIN[sport])
-    print(f"\n{sport}: {len(reps)} training reps")
-    for spec in profiles["sports"][sport]["metrics"]:
+def fit(sport: str, profiles: dict, view: str | None = None) -> None:
+    if view:
+        reps = penn_view_reps(view, profiles, penn_train)
+        specs = profiles["sports"][sport]["views"][view]["metrics"]
+        source = f"Penn Action tennis, {view} view"
+    else:
+        reps = collect(sport, profiles, TRAIN[sport])
+        specs = profiles["sports"][sport]["metrics"]
+        source = SOURCES[sport]
+    print(f"\n{sport}{' / ' + view if view else ''}: {len(reps)} training reps")
+    for spec in specs:
         targets = [(spec, None)] + [(o, k) for k, o in (spec.get("by_type") or {}).items() if o is not None]
         skip = set((spec.get("by_type") or {}).keys())
         for tgt, rep_type in targets:
@@ -65,13 +92,14 @@ def fit(sport: str, profiles: dict) -> None:
             std = max(std, 0.05 * abs(mean), 0.02)
             tgt.update(mean=round(mean, 3), std=round(std, 3), tol=round(0.5 * std, 3))
             if rep_type is None:
-                spec["source"] = f"{SOURCES[sport]} (n={len(vals)})"
+                spec["source"] = f"{source} (n={len(vals)})"
             print(f"  {spec['id']:22s} {rep_type or '':9s} mean {mean:8.3f}  std {std:7.3f}  n={len(vals)}")
 
 
 if __name__ == "__main__":
     profiles = load_profiles()
-    for sport in sys.argv[1:] or list(TRAIN):
-        fit(sport, profiles)
+    for target in sys.argv[1:] or list(TRAIN) + ["tennis/back", "tennis/side"]:
+        sport, _, view = target.partition("/")
+        fit(sport, profiles, view or None)
     PROFILES_PATH.write_text(json.dumps(profiles, indent=2) + "\n")
     print(f"\nwrote {PROFILES_PATH}")

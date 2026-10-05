@@ -45,6 +45,8 @@ class SessionIn(BaseModel):
     reps: list[dict] = Field(max_length=5000)
     app_version: str = Field(default="", max_length=20)
     device: str = Field(default="", max_length=40)
+    view: Literal["front", "side", "back"] | None = None
+    focus: str | None = Field(default=None, max_length=30)
 
 
 def user_out(u: User) -> dict:
@@ -162,7 +164,8 @@ def create_session(body: SessionIn, response: Response, background: BackgroundTa
     s = PracticeSession(
         user_id=user.id, client_id=body.client_id, sport=body.sport, handedness=body.handedness,
         started_at=body.started_at, duration_s=body.duration_s, rep_count=len(body.reps), score=score,
-        summary=body.summary, reps=body.reps, app_version=body.app_version, device=body.device)
+        summary={**body.summary, "view": body.view, "focus": body.focus} if body.view else body.summary,
+        reps=body.reps, app_version=body.app_version, device=body.device)
     db.add(s)
     db.commit()
     cp = stats.maybe_checkpoint(db, s)

@@ -447,9 +447,9 @@
         {
           "label": "Finish over your shoulder",
           "unit": "torso",
-          "mean": 0.3,
-          "std": 0.3,
-          "tol": 0.15,
+          "mean": 0.271,
+          "std": 0.307,
+          "tol": 0.154,
           "weight": 1.0,
           "one_sided": "low",
           "by_type": {
@@ -458,14 +458,14 @@
           "cue_low": "Finish over your shoulder: keep swinging until the racket wraps up and over your opposite shoulder.",
           "cue_high": "",
           "id": "finish_height",
-          "source": "prior"
+          "source": "THETIS experts (n=79)"
         },
         {
           "label": "Elbow at nose level at the finish",
           "unit": "torso",
           "mean": 0.0,
           "std": 0.25,
-          "tol": 0.12,
+          "tol": 0.15,
           "weight": 1.0,
           "one_sided": "low",
           "by_type": {
@@ -474,14 +474,14 @@
           "cue_low": "Finish with your hitting elbow up at nose height, pointing toward your target.",
           "cue_high": "",
           "id": "elbow_finish",
-          "source": "prior"
+          "source": "coach target: elbow at nose level (a coaching convention; Penn clips end before the full finish)"
         },
         {
           "label": "Other hand out for spacing",
           "unit": "torso",
-          "mean": 1.0,
-          "std": 0.2,
-          "tol": 0.1,
+          "mean": 0.966,
+          "std": 0.241,
+          "tol": 0.12,
           "weight": 0.8,
           "one_sided": "low",
           "by_type": {
@@ -490,14 +490,14 @@
           "cue_low": "Use your other hand: reach it out toward the ball as you turn, to judge the space between you and the ball.",
           "cue_high": "",
           "id": "off_hand_reach",
-          "source": "prior"
+          "source": "THETIS experts (n=77)"
         },
         {
           "label": "Spacing from the ball",
           "unit": "torso",
-          "mean": 1.1,
-          "std": 0.3,
-          "tol": 0.15,
+          "mean": 0.372,
+          "std": 0.375,
+          "tol": 0.187,
           "weight": 1.0,
           "by_type": {
             "serve": null
@@ -505,7 +505,7 @@
           "cue_low": "You're jammed: give yourself more room between your body and the ball.",
           "cue_high": "You're reaching for the ball: move your feet so it comes to you.",
           "id": "spacing",
-          "source": "prior"
+          "source": "THETIS experts (n=79)"
         }
       ],
       "pattern": {
@@ -526,12 +526,12 @@
               "id": "stance_height",
               "label": "Staying low while loading",
               "unit": "torso",
-              "mean": 1.163,
-              "std": 0.113,
-              "tol": 0.057,
+              "mean": 1.272,
+              "std": 0.276,
+              "tol": 0.138,
               "weight": 1.0,
               "one_sided": "high",
-              "source": "THETIS experts (n=96)",
+              "source": "Penn Action tennis, back view (n=46)",
               "cue_low": "",
               "cue_high": "Bend your knees more as you load. Power comes from the ground up."
             },
@@ -539,16 +539,16 @@
               "id": "contact_arm",
               "label": "Arm extension at contact",
               "unit": "deg",
-              "mean": 115.854,
-              "std": 59.381,
-              "tol": 29.69,
+              "mean": 30.619,
+              "std": 23.111,
+              "tol": 11.556,
               "weight": 1.0,
-              "source": "THETIS experts (n=78)",
+              "source": "Penn Action tennis, back view (n=24)",
               "by_type": {
                 "serve": {
-                  "mean": 170,
-                  "std": 10,
-                  "tol": 6
+                  "mean": 158.108,
+                  "std": 14.307,
+                  "tol": 7.154
                 }
               },
               "cue_low": "Reach up on your serve. Hit at full stretch above your hitting shoulder, not with a bent arm.",
@@ -562,16 +562,16 @@
               "id": "contact_height",
               "label": "Contact height",
               "unit": "torso",
-              "mean": -0.932,
-              "std": 0.364,
-              "tol": 0.182,
+              "mean": -0.963,
+              "std": 0.22,
+              "tol": 0.11,
               "weight": 0.8,
-              "source": "THETIS experts (n=79)",
+              "source": "Penn Action tennis, back view (n=24)",
               "by_type": {
                 "serve": {
-                  "mean": -2.0,
-                  "std": 0.25,
-                  "tol": 0.15
+                  "mean": -1.946,
+                  "std": 0.229,
+                  "tol": 0.115
                 }
               },
               "cue_low": "You are meeting the ball too high. Let it drop into your strike zone.",
@@ -581,12 +581,12 @@
               "id": "swing_through",
               "label": "Swing through the ball",
               "unit": "torso",
-              "mean": 1.796,
-              "std": 0.54,
-              "tol": 0.27,
+              "mean": 1.573,
+              "std": 0.274,
+              "tol": 0.137,
               "weight": 1.0,
               "one_sided": "low",
-              "source": "THETIS experts (n=79)",
+              "source": "Penn Action tennis, back view (n=24)",
               "by_type": {
                 "serve": null
               },
@@ -597,12 +597,12 @@
               "id": "shoulder_turn",
               "label": "Unit turn",
               "unit": "ratio",
-              "mean": 0.156,
-              "std": 0.144,
-              "tol": 0.072,
+              "mean": 0.441,
+              "std": 0.285,
+              "tol": 0.142,
               "weight": 1.0,
               "one_sided": "high",
-              "source": "THETIS experts (n=79)",
+              "source": "Penn Action tennis, back view (n=24)",
               "by_type": {
                 "serve": null
               },
@@ -613,20 +613,20 @@
               "id": "swing_tempo",
               "label": "Backswing-to-contact time",
               "unit": "s",
-              "mean": 0.469,
-              "std": 0.366,
-              "tol": 0.183,
+              "mean": 0.55,
+              "std": 0.469,
+              "tol": 0.235,
               "weight": 0.5,
-              "source": "THETIS experts (n=96)",
+              "source": "Penn Action tennis, back view (n=46)",
               "cue_low": "You are snatching at the ball. Smooth acceleration beats a late rush.",
               "cue_high": "Your forward swing is slow. Accelerate through contact."
             },
             {
               "label": "Finish over your shoulder",
               "unit": "torso",
-              "mean": 0.3,
-              "std": 0.3,
-              "tol": 0.15,
+              "mean": 0.162,
+              "std": 0.238,
+              "tol": 0.119,
               "weight": 1.0,
               "one_sided": "low",
               "by_type": {
@@ -635,14 +635,14 @@
               "cue_low": "Finish over your shoulder: keep swinging until the racket wraps up and over your opposite shoulder.",
               "cue_high": "",
               "id": "finish_height",
-              "source": "prior"
+              "source": "Penn Action tennis, back view (n=24)"
             },
             {
               "label": "Elbow at nose level at the finish",
               "unit": "torso",
               "mean": 0.0,
               "std": 0.25,
-              "tol": 0.12,
+              "tol": 0.15,
               "weight": 1.0,
               "one_sided": "low",
               "by_type": {
@@ -651,14 +651,14 @@
               "cue_low": "Finish with your hitting elbow up at nose height, pointing toward your target.",
               "cue_high": "",
               "id": "elbow_finish",
-              "source": "prior"
+              "source": "coach target: elbow at nose level (a coaching convention; Penn clips end before the full finish)"
             },
             {
               "label": "Other hand out for spacing",
               "unit": "torso",
-              "mean": 1.0,
-              "std": 0.2,
-              "tol": 0.1,
+              "mean": 1.184,
+              "std": 0.272,
+              "tol": 0.136,
               "weight": 0.8,
               "one_sided": "low",
               "by_type": {
@@ -667,14 +667,14 @@
               "cue_low": "Use your other hand: reach it out toward the ball as you turn, to judge the space between you and the ball.",
               "cue_high": "",
               "id": "off_hand_reach",
-              "source": "prior"
+              "source": "Penn Action tennis, back view (n=24)"
             },
             {
               "label": "Spacing from the ball",
               "unit": "torso",
-              "mean": 1.1,
-              "std": 0.3,
-              "tol": 0.15,
+              "mean": 0.285,
+              "std": 0.224,
+              "tol": 0.112,
               "weight": 1.0,
               "by_type": {
                 "serve": null
@@ -682,7 +682,7 @@
               "cue_low": "You're jammed: give yourself more room between your body and the ball.",
               "cue_high": "You're reaching for the ball: move your feet so it comes to you.",
               "id": "spacing",
-              "source": "prior"
+              "source": "Penn Action tennis, back view (n=24)"
             }
           ]
         },
@@ -693,16 +693,16 @@
               "id": "contact_height",
               "label": "Contact height",
               "unit": "torso",
-              "mean": -0.932,
-              "std": 0.364,
-              "tol": 0.182,
+              "mean": -0.787,
+              "std": 0.353,
+              "tol": 0.177,
               "weight": 0.8,
-              "source": "THETIS experts (n=79)",
+              "source": "Penn Action tennis, side view (n=51)",
               "by_type": {
                 "serve": {
-                  "mean": -2.0,
-                  "std": 0.25,
-                  "tol": 0.15
+                  "mean": -1.927,
+                  "std": 0.206,
+                  "tol": 0.103
                 }
               },
               "cue_low": "You are meeting the ball too high. Let it drop into your strike zone.",
@@ -712,20 +712,20 @@
               "id": "swing_tempo",
               "label": "Backswing-to-contact time",
               "unit": "s",
-              "mean": 0.469,
-              "std": 0.366,
-              "tol": 0.183,
+              "mean": 0.3,
+              "std": 0.198,
+              "tol": 0.099,
               "weight": 0.5,
-              "source": "THETIS experts (n=96)",
+              "source": "Penn Action tennis, side view (n=75)",
               "cue_low": "You are snatching at the ball. Smooth acceleration beats a late rush.",
               "cue_high": "Your forward swing is slow. Accelerate through contact."
             },
             {
               "label": "Finish over your shoulder",
               "unit": "torso",
-              "mean": 0.3,
-              "std": 0.3,
-              "tol": 0.15,
+              "mean": 0.229,
+              "std": 0.338,
+              "tol": 0.169,
               "weight": 1.0,
               "one_sided": "low",
               "by_type": {
@@ -734,14 +734,14 @@
               "cue_low": "Finish over your shoulder: keep swinging until the racket wraps up and over your opposite shoulder.",
               "cue_high": "",
               "id": "finish_height",
-              "source": "prior"
+              "source": "Penn Action tennis, side view (n=51)"
             },
             {
               "label": "Elbow at nose level at the finish",
               "unit": "torso",
               "mean": 0.0,
               "std": 0.25,
-              "tol": 0.12,
+              "tol": 0.15,
               "weight": 1.0,
               "one_sided": "low",
               "by_type": {
@@ -750,14 +750,14 @@
               "cue_low": "Finish with your hitting elbow up at nose height, pointing toward your target.",
               "cue_high": "",
               "id": "elbow_finish",
-              "source": "prior"
+              "source": "coach target: elbow at nose level (a coaching convention; Penn clips end before the full finish)"
             },
             {
               "label": "Other hand out for spacing",
               "unit": "torso",
-              "mean": 1.0,
-              "std": 0.2,
-              "tol": 0.1,
+              "mean": 0.842,
+              "std": 0.214,
+              "tol": 0.107,
               "weight": 0.8,
               "one_sided": "low",
               "by_type": {
@@ -766,14 +766,14 @@
               "cue_low": "Use your other hand: reach it out toward the ball as you turn, to judge the space between you and the ball.",
               "cue_high": "",
               "id": "off_hand_reach",
-              "source": "prior"
+              "source": "Penn Action tennis, side view (n=51)"
             },
             {
               "label": "Contact out in front",
               "unit": "torso",
-              "mean": 0.6,
-              "std": 0.3,
-              "tol": 0.15,
+              "mean": 0.024,
+              "std": 0.541,
+              "tol": 0.27,
               "weight": 1.2,
               "one_sided": "low",
               "by_type": {
@@ -782,14 +782,14 @@
               "cue_low": "Make contact further in front of you, out ahead of your front foot.",
               "cue_high": "",
               "id": "contact_front",
-              "source": "prior"
+              "source": "Penn Action tennis, side view (n=51)"
             },
             {
               "label": "Extend through the ball",
               "unit": "torso",
-              "mean": 0.6,
-              "std": 0.3,
-              "tol": 0.15,
+              "mean": 0.352,
+              "std": 0.248,
+              "tol": 0.124,
               "weight": 1.0,
               "one_sided": "low",
               "by_type": {
@@ -798,14 +798,14 @@
               "cue_low": "Extend out toward your target through contact before wrapping to the finish.",
               "cue_high": "",
               "id": "extension_through",
-              "source": "prior"
+              "source": "Penn Action tennis, side view (n=51)"
             },
             {
               "label": "Load the back leg",
               "unit": "stance",
-              "mean": 0.3,
-              "std": 0.2,
-              "tol": 0.1,
+              "mean": 0.526,
+              "std": 0.1,
+              "tol": 0.05,
               "weight": 1.0,
               "one_sided": "high",
               "by_type": {
@@ -814,15 +814,15 @@
               "cue_low": "",
               "cue_high": "Load your back leg on the take-back: sit your weight over your back foot.",
               "id": "back_load",
-              "source": "prior",
+              "source": "Penn Action tennis, side view (n=45)",
               "note": "only measured with staggered feet; open-stance strokes load and rotate instead"
             },
             {
               "label": "Transfer to the front leg",
               "unit": "stance",
-              "mean": 0.4,
-              "std": 0.25,
-              "tol": 0.12,
+              "mean": 0.15,
+              "std": 0.255,
+              "tol": 0.128,
               "weight": 1.0,
               "one_sided": "low",
               "by_type": {
@@ -831,23 +831,23 @@
               "cue_low": "Push off your back leg and move your weight onto your front leg through contact.",
               "cue_high": "",
               "id": "weight_shift",
-              "source": "prior",
+              "source": "Penn Action tennis, side view (n=45)",
               "note": "only measured with staggered feet; open-stance strokes load and rotate instead"
             },
             {
               "id": "contact_arm",
               "label": "Arm extension at contact",
               "unit": "deg",
-              "mean": 150,
-              "std": 15,
-              "tol": 8,
+              "mean": 119.485,
+              "std": 32.7,
+              "tol": 16.35,
               "weight": 1.0,
-              "source": "THETIS experts (n=78)",
+              "source": "Penn Action tennis, side view (n=51)",
               "by_type": {
                 "serve": {
-                  "mean": 170,
-                  "std": 10,
-                  "tol": 6
+                  "mean": 157.52,
+                  "std": 24.688,
+                  "tol": 12.344
                 }
               },
               "cue_low": "Fully extend your hitting arm at contact on the backhand and serve.",
