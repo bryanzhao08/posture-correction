@@ -72,3 +72,44 @@ def test_swift_engine_matches_python(tmp_path):
     run = subprocess.run([str(exe), str(path), str(PROFILES_PATH)], capture_output=True, text=True)
     print(run.stdout)
     assert run.returncode == 0, run.stdout[-6000:] + run.stderr[-2000:]
+
+
+def correction_fixtures():
+    """Every correction rule applied to a few real poses, with the Python result as the expectation."""
+    from formcoach import corrections as cx
+    from tests.test_corrections import base_pose
+    poses = [base_pose()]
+    try:
+        for i, (_, rec, _) in enumerate(datasets.thetis()):
+            if i % 40 == 0:
+                fr = rec["frames"][len(rec["frames"]) // 2]["j"]
+                if all(j[2] > 0.3 for j in fr):
+                    poses.append({n: (j[0] * rec["aspect"], j[1]) for n, j in zip(load_profiles()["joints"], fr)})
+            if len(poses) >= 4:
+                break
+    except (FileNotFoundError, ImportError):
+        pass
+    out = []
+    for k, pose in enumerate(poses):
+        ref = {n: (x + 0.03 * ((hash(n) % 5) - 2), y) for n, (x, y) in pose.items()}
+        for analyzer, rules in cx.EVENTS.items():
+            for metric in rules:
+                for target in (0.0, 0.4, 1.1):
+                    t = 160.0 if metric in ("elbow_extension", "contact_arm") else (8.0 if metric == "arm_verticality" else target)
+                    got = cx.corrected_pose(analyzer, metric, t, pose, ref, 0.2, "r")
+                    out.append({"analyzer": analyzer, "metric": metric, "target": t, "pose": pose, "ref": ref,
+                                "torso": 0.2, "dom": "r", "expected": got})
+    return out
+
+
+@pytest.mark.skipif(shutil.which("swift") is None, reason="Swift toolchain not installed")
+@pytest.mark.xfail(reason="Swift port of corrections pending (Codex batch 7 removes this mark)", strict=False)
+def test_swift_corrections_match_python(tmp_path):
+    path = tmp_path / "corrections.json"
+    path.write_text(json.dumps(correction_fixtures()))
+    build = subprocess.run(["swift", "build", "-c", "release", "--package-path", str(PKG)], capture_output=True, text=True)
+    assert build.returncode == 0, build.stderr[-4000:]
+    run = subprocess.run([str(PKG / ".build" / "release" / "formcore-check"), "--corrections", str(path)],
+                         capture_output=True, text=True)
+    print(run.stdout)
+    assert run.returncode == 0, run.stdout[-6000:] + run.stderr[-2000:]
