@@ -39,6 +39,19 @@ def real_samples(per_dataset=12):
     return out
 
 
+def view_samples(every=4):
+    """Real tennis clips filmed from the front, side and behind, analysed with that camera view."""
+    out = []
+    try:
+        for i, (name, rec, truth) in enumerate(datasets.penn_action({"tennis_forehand", "tennis_serve"})):
+            if i % every == 0:
+                out.append((f"{name}-{truth['view']}", dict(rec, sport="tennis", view=truth["view"],
+                                                            focus="serve" if truth["action"] == "tennis_serve" else None)))
+    except (FileNotFoundError, ImportError):
+        pass
+    return out
+
+
 @pytest.mark.skipif(shutil.which("swift") is None, reason="Swift toolchain not installed")
 def test_swift_engine_matches_python(tmp_path):
     profiles = load_profiles()
@@ -49,6 +62,7 @@ def test_swift_engine_matches_python(tmp_path):
             fx.append(fixture(f"{name}-{seed}", recording(sport, script, noise=noise, seed=seed, handedness=hand),
                               profiles))
     fx += [fixture(n, r, profiles) for n, r in real_samples()]
+    fx += [fixture(n, r, profiles) for n, r in view_samples()]
     path = tmp_path / "fixtures.json"
     path.write_text(json.dumps(fx))
     build = subprocess.run(["swift", "build", "-c", "release", "--package-path", str(PKG)],

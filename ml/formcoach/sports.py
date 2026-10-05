@@ -272,7 +272,11 @@ def racket(seg, ctx):
         contact = argmax(sp, back, thru)
         if contact <= back:
             contact = back + 1
-        rep_type = "forehand" if lat[back] > lat[thru] else "backhand"
+        if ctx.view == "side":
+            # side-on, both strokes sweep the same way across the image; the training focus decides
+            rep_type = "backhand" if ctx.focus == "backhand" else "forehand"
+        else:
+            rep_type = "forehand" if lat[back] > lat[thru] else "backhand"
     c = seg[contact]
     reach = abs(lat[thru] - lat[back])
     # Jumping jacks and arm circles move both hands as mirror images and take both above the head;
@@ -324,7 +328,36 @@ def racket(seg, ctx):
             if nz is not None:
                 move = max(move, dist(nz, nose0) / seg[i].torso)
         m["head_stability"] = move
-    ev = {"backswing": b.t, "contact": c.t, "finish": seg[thru].t}
+
+    # Coaching details; each is only scored in the camera views that can actually see it.
+    fh = argmin(ry, contact, n - 1)                       # top of the follow-through
+    f = seg[fh]
+    m["finish_height"] = (f.pts[o + "_shoulder"][1] - f.pts[d + "_wrist"][1]) / f.torso
+    el, nz = _p(f, d + "_elbow"), _p(f, "nose")
+    if el is not None and nz is not None:
+        m["elbow_finish"] = (nz[1] - el[1]) / f.torso       # 0 = elbow level with the nose
+    off_reach = None
+    for i in range(0, contact + 1):
+        ow, osh = _p(seg[i], o + "_wrist"), _p(seg[i], o + "_shoulder")
+        if ow is not None and osh is not None:
+            r = dist(ow, osh) / seg[i].torso
+            off_reach = r if off_reach is None else max(off_reach, r)
+    m["off_hand_reach"] = off_reach                        # free arm out toward the ball while turning
+    m["spacing"] = abs(c.rx)                               # hand-to-body distance at contact (front/back)
+    fwd = 1.0 if c.rx >= b.rx else -1.0                   # side view: the swing travels toward the net
+    m["contact_front"] = c.rx * fwd                        # ahead of the hips; refined below with the feet
+    cla, cra = _p(c, "l_ankle"), _p(c, "r_ankle")
+    if cla is not None and cra is not None:
+        front_ankle = max(cla[0] * fwd, cra[0] * fwd)
+        m["contact_front"] = (c.pts[d + "_wrist"][0] * fwd - front_ankle) / c.torso
+    m["extension_through"] = max(seg[i].rx * fwd for i in range(contact, n)) - c.rx * fwd
+    la, ra = _p(b, "l_ankle"), _p(b, "r_ankle")
+    if la is not None and ra is not None and abs(la[0] - ra[0]) / b.torso >= 0.3:
+        back_x, front_x = sorted((la[0], ra[0]), key=lambda v: v * fwd)
+        width = (front_x - back_x) * fwd
+        m["back_load"] = (b.hip[0] - back_x) * fwd / width       # 0 = over the back foot, 1 = front
+        m["weight_shift"] = (c.hip[0] - b.hip[0]) * fwd / width  # share of the stance moved forward
+    ev = {"backswing": b.t, "contact": c.t, "finish": seg[thru].t, "follow_through": f.t}
     return rep_type, ev, m
 
 

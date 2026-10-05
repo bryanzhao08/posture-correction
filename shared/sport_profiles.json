@@ -309,7 +309,7 @@
       "label": "Tennis",
       "analyzer": "racket",
       "tracker": "dominant_wrist",
-      "camera": "Face-on: tripod at chest height, 4-6 m in front of you (behind the net or baseline, facing you).",
+      "camera": "Face-on: tripod 6-8 m in front of you (across the net), lens at chest height. Best for volleys and net play.",
       "detect": {
         "rest_speed": 1.0,
         "rest_ms": 150,
@@ -417,7 +417,7 @@
             "serve": null
           },
           "cue_low": "",
-          "cue_high": "Turn your shoulders earlier and further. Prepare with a full unit turn."
+          "cue_high": "Turn earlier and fully: by the end of your take-back your shoulders should be sideways, with your non-hitting shoulder pointing at the ball."
         },
         {
           "id": "head_stability",
@@ -443,6 +443,69 @@
           "source": "THETIS experts (n=96)",
           "cue_low": "You are snatching at the ball. Smooth acceleration beats a late rush.",
           "cue_high": "Your forward swing is slow. Accelerate through contact."
+        },
+        {
+          "label": "Finish over your shoulder",
+          "unit": "torso",
+          "mean": 0.3,
+          "std": 0.3,
+          "tol": 0.15,
+          "weight": 1.0,
+          "one_sided": "low",
+          "by_type": {
+            "serve": null
+          },
+          "cue_low": "Finish over your shoulder: keep swinging until the racket wraps up and over your opposite shoulder.",
+          "cue_high": "",
+          "id": "finish_height",
+          "source": "prior"
+        },
+        {
+          "label": "Elbow at nose level at the finish",
+          "unit": "torso",
+          "mean": 0.0,
+          "std": 0.25,
+          "tol": 0.12,
+          "weight": 1.0,
+          "one_sided": "low",
+          "by_type": {
+            "serve": null
+          },
+          "cue_low": "Finish with your hitting elbow up at nose height, pointing toward your target.",
+          "cue_high": "",
+          "id": "elbow_finish",
+          "source": "prior"
+        },
+        {
+          "label": "Other hand out for spacing",
+          "unit": "torso",
+          "mean": 1.0,
+          "std": 0.2,
+          "tol": 0.1,
+          "weight": 0.8,
+          "one_sided": "low",
+          "by_type": {
+            "serve": null
+          },
+          "cue_low": "Use your other hand: reach it out toward the ball as you turn, to judge the space between you and the ball.",
+          "cue_high": "",
+          "id": "off_hand_reach",
+          "source": "prior"
+        },
+        {
+          "label": "Spacing from the ball",
+          "unit": "torso",
+          "mean": 1.1,
+          "std": 0.3,
+          "tol": 0.15,
+          "weight": 1.0,
+          "by_type": {
+            "serve": null
+          },
+          "cue_low": "You're jammed: give yourself more room between your body and the ball.",
+          "cue_high": "You're reaching for the ball: move your feet so it comes to you.",
+          "id": "spacing",
+          "source": "prior"
         }
       ],
       "pattern": {
@@ -450,7 +513,397 @@
         "min_overhead_drop": 1.0,
         "min_cross": 0.1,
         "max_mirror": 0.6
-      }
+      },
+      "default_view": "front",
+      "views": {
+        "front": {
+          "camera": "Face-on: tripod 6-8 m in front of you (across the net), lens at chest height. Best for volleys and net play."
+        },
+        "back": {
+          "camera": "From behind: tripod 2-4 m behind you, lens at chest-to-head height (1.4-1.7 m), centred on where you hit. Best for groundstrokes: spacing, turn and finish.",
+          "metrics": [
+            {
+              "id": "stance_height",
+              "label": "Staying low while loading",
+              "unit": "torso",
+              "mean": 1.163,
+              "std": 0.113,
+              "tol": 0.057,
+              "weight": 1.0,
+              "one_sided": "high",
+              "source": "THETIS experts (n=96)",
+              "cue_low": "",
+              "cue_high": "Bend your knees more as you load. Power comes from the ground up."
+            },
+            {
+              "id": "contact_arm",
+              "label": "Arm extension at contact",
+              "unit": "deg",
+              "mean": 115.854,
+              "std": 59.381,
+              "tol": 29.69,
+              "weight": 1.0,
+              "source": "THETIS experts (n=78)",
+              "by_type": {
+                "serve": {
+                  "mean": 170,
+                  "std": 10,
+                  "tol": 6
+                }
+              },
+              "cue_low": "Reach up on your serve. Hit at full stretch above your hitting shoulder, not with a bent arm.",
+              "cue_high": "",
+              "only_types": [
+                "serve"
+              ],
+              "note": "groundstroke extension is invisible face-on (arm points at the camera)"
+            },
+            {
+              "id": "contact_height",
+              "label": "Contact height",
+              "unit": "torso",
+              "mean": -0.932,
+              "std": 0.364,
+              "tol": 0.182,
+              "weight": 0.8,
+              "source": "THETIS experts (n=79)",
+              "by_type": {
+                "serve": {
+                  "mean": -2.0,
+                  "std": 0.25,
+                  "tol": 0.15
+                }
+              },
+              "cue_low": "You are meeting the ball too high. Let it drop into your strike zone.",
+              "cue_high": "You are meeting the ball too low. Get under it with your legs, or reach up fully on serve."
+            },
+            {
+              "id": "swing_through",
+              "label": "Swing through the ball",
+              "unit": "torso",
+              "mean": 1.796,
+              "std": 0.54,
+              "tol": 0.27,
+              "weight": 1.0,
+              "one_sided": "low",
+              "source": "THETIS experts (n=79)",
+              "by_type": {
+                "serve": null
+              },
+              "cue_low": "You are cutting your swing short. Finish across your body.",
+              "cue_high": ""
+            },
+            {
+              "id": "shoulder_turn",
+              "label": "Unit turn",
+              "unit": "ratio",
+              "mean": 0.156,
+              "std": 0.144,
+              "tol": 0.072,
+              "weight": 1.0,
+              "one_sided": "high",
+              "source": "THETIS experts (n=79)",
+              "by_type": {
+                "serve": null
+              },
+              "cue_low": "",
+              "cue_high": "Turn earlier and fully: by the end of your take-back your shoulders should be sideways, with your non-hitting shoulder pointing at the ball."
+            },
+            {
+              "id": "swing_tempo",
+              "label": "Backswing-to-contact time",
+              "unit": "s",
+              "mean": 0.469,
+              "std": 0.366,
+              "tol": 0.183,
+              "weight": 0.5,
+              "source": "THETIS experts (n=96)",
+              "cue_low": "You are snatching at the ball. Smooth acceleration beats a late rush.",
+              "cue_high": "Your forward swing is slow. Accelerate through contact."
+            },
+            {
+              "label": "Finish over your shoulder",
+              "unit": "torso",
+              "mean": 0.3,
+              "std": 0.3,
+              "tol": 0.15,
+              "weight": 1.0,
+              "one_sided": "low",
+              "by_type": {
+                "serve": null
+              },
+              "cue_low": "Finish over your shoulder: keep swinging until the racket wraps up and over your opposite shoulder.",
+              "cue_high": "",
+              "id": "finish_height",
+              "source": "prior"
+            },
+            {
+              "label": "Elbow at nose level at the finish",
+              "unit": "torso",
+              "mean": 0.0,
+              "std": 0.25,
+              "tol": 0.12,
+              "weight": 1.0,
+              "one_sided": "low",
+              "by_type": {
+                "serve": null
+              },
+              "cue_low": "Finish with your hitting elbow up at nose height, pointing toward your target.",
+              "cue_high": "",
+              "id": "elbow_finish",
+              "source": "prior"
+            },
+            {
+              "label": "Other hand out for spacing",
+              "unit": "torso",
+              "mean": 1.0,
+              "std": 0.2,
+              "tol": 0.1,
+              "weight": 0.8,
+              "one_sided": "low",
+              "by_type": {
+                "serve": null
+              },
+              "cue_low": "Use your other hand: reach it out toward the ball as you turn, to judge the space between you and the ball.",
+              "cue_high": "",
+              "id": "off_hand_reach",
+              "source": "prior"
+            },
+            {
+              "label": "Spacing from the ball",
+              "unit": "torso",
+              "mean": 1.1,
+              "std": 0.3,
+              "tol": 0.15,
+              "weight": 1.0,
+              "by_type": {
+                "serve": null
+              },
+              "cue_low": "You're jammed: give yourself more room between your body and the ball.",
+              "cue_high": "You're reaching for the ball: move your feet so it comes to you.",
+              "id": "spacing",
+              "source": "prior"
+            }
+          ]
+        },
+        "side": {
+          "camera": "Side-on: tripod 4-6 m to your forehand side, lens at 1.0-1.3 m, level with where you hit the ball. Best for contact point, weight transfer and serves.",
+          "metrics": [
+            {
+              "id": "contact_height",
+              "label": "Contact height",
+              "unit": "torso",
+              "mean": -0.932,
+              "std": 0.364,
+              "tol": 0.182,
+              "weight": 0.8,
+              "source": "THETIS experts (n=79)",
+              "by_type": {
+                "serve": {
+                  "mean": -2.0,
+                  "std": 0.25,
+                  "tol": 0.15
+                }
+              },
+              "cue_low": "You are meeting the ball too high. Let it drop into your strike zone.",
+              "cue_high": "You are meeting the ball too low. Get under it with your legs, or reach up fully on serve."
+            },
+            {
+              "id": "swing_tempo",
+              "label": "Backswing-to-contact time",
+              "unit": "s",
+              "mean": 0.469,
+              "std": 0.366,
+              "tol": 0.183,
+              "weight": 0.5,
+              "source": "THETIS experts (n=96)",
+              "cue_low": "You are snatching at the ball. Smooth acceleration beats a late rush.",
+              "cue_high": "Your forward swing is slow. Accelerate through contact."
+            },
+            {
+              "label": "Finish over your shoulder",
+              "unit": "torso",
+              "mean": 0.3,
+              "std": 0.3,
+              "tol": 0.15,
+              "weight": 1.0,
+              "one_sided": "low",
+              "by_type": {
+                "serve": null
+              },
+              "cue_low": "Finish over your shoulder: keep swinging until the racket wraps up and over your opposite shoulder.",
+              "cue_high": "",
+              "id": "finish_height",
+              "source": "prior"
+            },
+            {
+              "label": "Elbow at nose level at the finish",
+              "unit": "torso",
+              "mean": 0.0,
+              "std": 0.25,
+              "tol": 0.12,
+              "weight": 1.0,
+              "one_sided": "low",
+              "by_type": {
+                "serve": null
+              },
+              "cue_low": "Finish with your hitting elbow up at nose height, pointing toward your target.",
+              "cue_high": "",
+              "id": "elbow_finish",
+              "source": "prior"
+            },
+            {
+              "label": "Other hand out for spacing",
+              "unit": "torso",
+              "mean": 1.0,
+              "std": 0.2,
+              "tol": 0.1,
+              "weight": 0.8,
+              "one_sided": "low",
+              "by_type": {
+                "serve": null
+              },
+              "cue_low": "Use your other hand: reach it out toward the ball as you turn, to judge the space between you and the ball.",
+              "cue_high": "",
+              "id": "off_hand_reach",
+              "source": "prior"
+            },
+            {
+              "label": "Contact out in front",
+              "unit": "torso",
+              "mean": 0.6,
+              "std": 0.3,
+              "tol": 0.15,
+              "weight": 1.2,
+              "one_sided": "low",
+              "by_type": {
+                "serve": null
+              },
+              "cue_low": "Make contact further in front of you, out ahead of your front foot.",
+              "cue_high": "",
+              "id": "contact_front",
+              "source": "prior"
+            },
+            {
+              "label": "Extend through the ball",
+              "unit": "torso",
+              "mean": 0.6,
+              "std": 0.3,
+              "tol": 0.15,
+              "weight": 1.0,
+              "one_sided": "low",
+              "by_type": {
+                "serve": null
+              },
+              "cue_low": "Extend out toward your target through contact before wrapping to the finish.",
+              "cue_high": "",
+              "id": "extension_through",
+              "source": "prior"
+            },
+            {
+              "label": "Load the back leg",
+              "unit": "stance",
+              "mean": 0.3,
+              "std": 0.2,
+              "tol": 0.1,
+              "weight": 1.0,
+              "one_sided": "high",
+              "by_type": {
+                "serve": null
+              },
+              "cue_low": "",
+              "cue_high": "Load your back leg on the take-back: sit your weight over your back foot.",
+              "id": "back_load",
+              "source": "prior",
+              "note": "only measured with staggered feet; open-stance strokes load and rotate instead"
+            },
+            {
+              "label": "Transfer to the front leg",
+              "unit": "stance",
+              "mean": 0.4,
+              "std": 0.25,
+              "tol": 0.12,
+              "weight": 1.0,
+              "one_sided": "low",
+              "by_type": {
+                "serve": null
+              },
+              "cue_low": "Push off your back leg and move your weight onto your front leg through contact.",
+              "cue_high": "",
+              "id": "weight_shift",
+              "source": "prior",
+              "note": "only measured with staggered feet; open-stance strokes load and rotate instead"
+            },
+            {
+              "id": "contact_arm",
+              "label": "Arm extension at contact",
+              "unit": "deg",
+              "mean": 150,
+              "std": 15,
+              "tol": 8,
+              "weight": 1.0,
+              "source": "THETIS experts (n=78)",
+              "by_type": {
+                "serve": {
+                  "mean": 170,
+                  "std": 10,
+                  "tol": 6
+                }
+              },
+              "cue_low": "Fully extend your hitting arm at contact on the backhand and serve.",
+              "cue_high": "",
+              "one_sided": "low",
+              "only_types": [
+                "backhand",
+                "serve"
+              ],
+              "note": "modern forehands contact with a bent elbow (about 100-130 deg, Reid et al. 2013), so only backhand and serve are judged"
+            }
+          ]
+        }
+      },
+      "training": [
+        {
+          "id": "groundstrokes",
+          "label": "Groundstrokes",
+          "recommended": "back",
+          "views": [
+            "back",
+            "side",
+            "front"
+          ],
+          "why": "From behind, the camera sees your spacing from the ball, your turn and your finish."
+        },
+        {
+          "id": "contact",
+          "label": "Contact point & weight transfer",
+          "recommended": "side",
+          "views": [
+            "side"
+          ],
+          "why": "Side-on is the only view that shows how far in front you hit and how your weight moves forward."
+        },
+        {
+          "id": "serve",
+          "label": "Serve",
+          "recommended": "side",
+          "views": [
+            "side",
+            "back"
+          ],
+          "why": "Side-on shows your reach, extension and how you drive up into the ball."
+        },
+        {
+          "id": "volleys",
+          "label": "Volleys & net play",
+          "recommended": "front",
+          "views": [
+            "front",
+            "side"
+          ],
+          "why": "Face-on, like a player across the net, shows your ready position and compact swing."
+        }
+      ]
     },
     "pickleball": {
       "label": "Pickleball",

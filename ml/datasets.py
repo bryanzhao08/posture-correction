@@ -128,6 +128,17 @@ def pad_start(rec: dict, seconds: float) -> dict:
     return rec
 
 
+# Penn view label -> where our camera is relative to the player ("back" = filmed from behind).
+PENN_VIEW = {"front": "front", "back": "back", "left": "side", "right": "side"}
+
+
+def _hitting_hand(frames: list) -> str:
+    """The wrist that travels further is the hitting hand."""
+    def travel(k):
+        return sum(math.hypot(b["j"][k][0] - a["j"][k][0], b["j"][k][1] - a["j"][k][1]) for a, b in zip(frames, frames[1:]))
+    return "right" if travel(6) >= travel(5) else "left"
+
+
 def penn_action(actions=None, fps: float = 30.0):
     """Penn Action labels. Clips have no frame rate on record; YouTube footage is mostly 30 fps."""
     import scipy.io as sio
@@ -143,6 +154,10 @@ def penn_action(actions=None, fps: float = 30.0):
             j = [[round(float(xs[i][k]) / w, 5), round(float(ys[i][k]) / h, 5), 0.9 if vis[i][k] else 0.4]
                  for k in range(13)]
             frames.append({"t": round(i / fps, 4), "j": j})
-        rec = {"handedness": "right", "fps": fps, "aspect": w / h, "frames": frames}
+        # Penn's "left" joints are the person's right (checked across all four views: only the swapped
+        # reading puts both shoulders where the camera would see them and makes most players right-handed).
+        for fr in frames:
+            fr["j"] = [fr["j"][k] for k in _SWAP]
+        rec = {"handedness": _hitting_hand(frames), "fps": fps, "aspect": w / h, "frames": frames}
         yield f"penn_{Path(path).stem}", pad_end(pad_start(rec, 1.6), 0.6), {
-            "action": action, "view": str(m["pose"])}
+            "action": action, "view": PENN_VIEW[str(m["pose"])]}

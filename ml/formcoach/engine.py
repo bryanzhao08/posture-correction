@@ -24,6 +24,21 @@ def load_profiles(path: Path | str = PROFILES_PATH) -> dict:
     return json.loads(Path(path).read_text())
 
 
+def effective_profile(sport_profile: dict, view: str | None) -> dict:
+    """A sport profile adjusted for the camera view: per-view detect/gates/pattern settings are merged
+    key by key; a per-view metrics list or camera text replaces the default one."""
+    views = sport_profile.get("views") or {}
+    if not view or view not in views:
+        return sport_profile
+    out = dict(sport_profile)
+    for key, value in views[view].items():
+        if isinstance(value, dict) and isinstance(out.get(key), dict):
+            out[key] = {**out[key], **value}
+        else:
+            out[key] = value
+    return out
+
+
 @dataclass
 class Sample:
     t: float
@@ -77,12 +92,16 @@ class Engine:
     Everything else is reported as a rejected motion, never as a rep.
     """
 
-    def __init__(self, profiles: dict, sport: str, handedness: str = "right"):
+    def __init__(self, profiles: dict, sport: str, handedness: str = "right", view: str | None = None,
+                 focus: str | None = None):
         self.cfg = profiles["preprocess"]
         self.scoring = profiles["scoring"]
         self.joints = profiles["joints"]
         self.sport = sport
-        self.profile = profiles["sports"][sport]
+        base = profiles["sports"][sport]
+        self.view = view or base.get("default_view", "front")
+        self.focus = focus            # training focus, e.g. "backhand"; only needed where 2D cannot tell
+        self.profile = effective_profile(base, self.view)
         self.det = self.profile["detect"]
         self.gates = self.profile["gates"]
         self.dom = "r" if handedness == "right" else "l"
@@ -362,7 +381,7 @@ def gate_failure(st: dict, g: dict) -> str:
 def analyze_recording(rec: dict, profiles: dict | None = None) -> Engine:
     """rec: {"sport", "handedness", "aspect", "frames": [{"t", "j": [[x, y, c] * 13]}]}"""
     profiles = profiles or load_profiles()
-    eng = Engine(profiles, rec["sport"], rec.get("handedness", "right"))
+    eng = Engine(profiles, rec["sport"], rec.get("handedness", "right"), rec.get("view"), rec.get("focus"))
     eng.events = []
     for fr in rec["frames"]:
         eng.events.extend(eng.push(fr["t"], fr["j"], rec.get("aspect", 1.0)))
