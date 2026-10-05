@@ -76,10 +76,31 @@ def test_lowering_hips_bends_knees_with_planted_feet():
         assert L(q[s + "_knee"], q[s + "_ankle"]) == pytest.approx(L(p[s + "_knee"], p[s + "_ankle"]))
 
 
-def test_shoulder_turn_narrows_relative_to_start():
+def test_rotation_cues_have_no_flat_ghost():
+    assert cx.corrected_pose("racket", "shoulder_turn", 0.4, base_pose(), base_pose(), T, "r") is None
+    assert cx.corrected_pose("golf", "shoulder_turn", 0.4, base_pose(), base_pose(), T, "r") is None
+
+
+def test_elbow_raise_keeps_the_hand_when_reachable():
     p = base_pose()
-    q = cx.corrected_pose("racket", "shoulder_turn", 0.4, p, base_pose(), T, "r")
-    assert L(q["l_shoulder"], q["r_shoulder"]) == pytest.approx(0.4 * 0.13, abs=1e-6)
+    p["r_wrist"] = (0.47, 0.30)                     # hand up by the face after the finish
+    q = cx.corrected_pose("racket", "elbow_finish", 0.0, p, None, T, "r")
+    assert q["r_elbow"][1] == pytest.approx(p["nose"][1], abs=1e-6)
+    assert L(q["r_elbow"], q["r_wrist"]) == pytest.approx(L(p["r_elbow"], p["r_wrist"]))
+    assert L(q["r_wrist"], p["r_wrist"]) < 0.06      # hand barely moves, never thrown above the head
+
+
+def test_racket_head_stability_has_no_flat_ghost():
+    assert cx.corrected_pose("racket", "head_stability", 0.0, base_pose(), base_pose(), T, "r") is None
+
+
+def test_golf_head_lift_moves_whole_body_without_stretching():
+    p, ref = base_pose(), dict(base_pose(), nose=(0.50, 0.24))
+    q = cx.corrected_pose("golf", "head_lift", 0.0, p, ref, T, "r")
+    torso = lambda z: L(((z["l_shoulder"][0] + z["r_shoulder"][0]) / 2, (z["l_shoulder"][1] + z["r_shoulder"][1]) / 2),
+                        ((z["l_hip"][0] + z["r_hip"][0]) / 2, (z["l_hip"][1] + z["r_hip"][1]) / 2))
+    assert torso(q) == pytest.approx(torso(p))
+    assert q["nose"][1] < p["nose"][1]
 
 
 def test_timing_metrics_have_no_pose_fix():

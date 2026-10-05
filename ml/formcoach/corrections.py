@@ -12,11 +12,13 @@ from __future__ import annotations
 import math
 
 # metric id -> (event at which to show the fix, reference event or None). Metrics about timing or
-# whole-swing paths (tempo, rhythm, hold, swing-through) have no single-pose fix and are absent.
+# whole-swing paths (tempo, rhythm, hold, swing-through) have no single-pose fix and are absent, and
+# so are rotations (shoulder turn) and racket-sport head stability: in 2D, turning and head movement
+# blur together, so a flat ghost reads wrong. Those cues rely on the 3D hologram demo instead.
 EVENTS = {
     "golf": {
         "lead_arm_top": ("top", None), "head_sway": ("impact", "address"), "head_lift": ("impact", "address"),
-        "hip_sway": ("top", "address"), "shoulder_turn": ("top", "address"), "finish_balance": ("finish", None),
+        "hip_sway": ("top", "address"), "finish_balance": ("finish", None),
     },
     "basketball": {
         "elbow_extension": ("release", None), "elbow_flare": ("set", None), "release_height": ("release", None),
@@ -26,8 +28,8 @@ EVENTS = {
         "finish_height": ("follow_through", None), "elbow_finish": ("follow_through", None),
         "off_hand_reach": ("backswing", None), "spacing": ("contact", None), "contact_front": ("contact", "backswing"),
         "back_load": ("backswing", "contact"), "weight_shift": ("contact", "backswing"), "contact_arm": ("contact", None),
-        "contact_height": ("contact", None), "shoulder_turn": ("backswing", "start"), "stance_height": ("contact", None),
-        "head_stability": ("contact", "backswing"), "ready_height": ("start", None), "backswing_size": ("backswing", None),
+        "contact_height": ("contact", None), "stance_height": ("contact", None),
+        "ready_height": ("start", None), "backswing_size": ("backswing", None),
     },
 }
 
@@ -87,14 +89,18 @@ def _straighten(p: dict, side: str):
 
 
 def _elbow_to_height(p: dict, side: str, y: float):
-    """Swing the upper arm about the shoulder so the elbow sits at height y; the forearm moves with it."""
+    """Swing the upper arm about the shoulder so the elbow sits at height y. The hand stays where it
+    was when the forearm can still reach it; otherwise it moves the least distance that keeps the
+    forearm its length."""
     s, e, w = p[side + "_shoulder"], p[side + "_elbow"], p[side + "_wrist"]
-    l1 = _len(s, e)
+    l1, l2 = _len(s, e), _len(e, w)
     dy = max(-l1, min(l1, y - s[1]))
     dx = math.sqrt(max(l1 * l1 - dy * dy, 0.0)) * (1 if e[0] >= s[0] else -1)
     ne = (s[0] + dx, s[1] + dy)
+    d = _len(ne, w)
     p[side + "_elbow"] = ne
-    p[side + "_wrist"] = (w[0] + ne[0] - e[0], w[1] + ne[1] - e[1])
+    if d > 1e-9:
+        p[side + "_wrist"] = (ne[0] + (w[0] - ne[0]) * l2 / d, ne[1] + (w[1] - ne[1]) * l2 / d)
 
 
 def _hips(p: dict):
@@ -116,18 +122,6 @@ def _lower_hips(p: dict, dy: float):
         p[s + "_knee"] = mid
 
 
-def _narrow_shoulders(p: dict, width: float):
-    ls, rs = p["l_shoulder"], p["r_shoulder"]
-    m = _mid(ls, rs)
-    cur = _len(ls, rs)
-    if cur < 1e-9:
-        return
-    k = width / cur
-    for side, s in (("l", ls), ("r", rs)):
-        ns = (m[0] + (s[0] - m[0]) * k, m[1] + (s[1] - m[1]) * k)
-        _shift(p, (side + "_shoulder", side + "_elbow", side + "_wrist"), ns[0] - s[0], ns[1] - s[1])
-
-
 def corrected_pose(analyzer: str, metric: str, target: float, pose: dict, ref: dict | None,
                    torso: float, dom: str, rep_type: str = "") -> dict | None:
     """The pose with the fault for `metric` corrected to `target` (the metric's reference mean).
@@ -146,14 +140,14 @@ def corrected_pose(analyzer: str, metric: str, target: float, pose: dict, ref: d
             elif metric == "head_sway":
                 p["nose"] = (ref["nose"][0], p["nose"][1])
             elif metric == "head_lift":
-                _shift(p, UPPER, 0.0, ref["nose"][1] + target * T - p["nose"][1])
+                # stay in posture: the whole body returns to its address height, knees re-bent
+                dy = ref["nose"][1] + target * T - p["nose"][1]
+                _lower_hips(p, max(-0.3 * T, min(0.3 * T, dy)))
             elif metric == "hip_sway":
                 hx, rx = _hips(p)[0], _hips(ref)[0]
                 want = rx + math.copysign(target * T, hx - rx)
                 _shift(p, ("l_hip", "r_hip"), want - hx, 0.0)
                 _shift(p, ("l_knee", "r_knee"), (want - hx) / 2.0, 0.0)
-            elif metric == "shoulder_turn":
-                _narrow_shoulders(p, target * _len(ref["l_shoulder"], ref["r_shoulder"]))
             elif metric == "finish_balance":
                 ankle = p[lead + "_ankle"]
                 hx = _hips(p)[0]
@@ -215,13 +209,9 @@ def corrected_pose(analyzer: str, metric: str, target: float, pose: dict, ref: d
                 _straighten(p, dom)
             elif metric == "contact_height":
                 _place_wrist(p, dom, (w[0], hip[1] + target * T))
-            elif metric == "shoulder_turn":
-                _narrow_shoulders(p, target * _len(ref["l_shoulder"], ref["r_shoulder"]))
             elif metric == "stance_height":
                 ankles = _mid(p["l_ankle"], p["r_ankle"])
                 _lower_hips(p, (ankles[1] - target * T) - hip[1])
-            elif metric == "head_stability":
-                p["nose"] = ref["nose"]
             elif metric == "ready_height":
                 _place_wrist(p, dom, (w[0], hip[1] + target * T))
             elif metric == "backswing_size":
