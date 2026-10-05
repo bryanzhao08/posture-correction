@@ -54,3 +54,10 @@ Simulator replay mode has no camera frames: generate frames for the replay sourc
 fixture's stick figure on a dark background at 480 px) so the full path, capture -> clip -> playback,
 is exercised in UI tests. Add a test that runs a replay session with replays on, ends it, opens a
 replay and screenshots it. Look at the screenshots. Report files changed and test results.
+
+## Note added after the renderer prototype
+Rotation cues (shoulder turn), racket-sport head stability and timing cues have no correction rule
+on purpose: in a flat 2D ghost they read wrong. When a rep's cues include one of those as well as a
+corrected one, the replay still shows the corrected one; on the replay screen, next to each cue that
+has no ghost, show the existing "Show me" hologram link instead. Sample renders of the intended look
+are in /tmp/formcoach-replays/*.mp4 (made by ml/tools/render_replay.py).
