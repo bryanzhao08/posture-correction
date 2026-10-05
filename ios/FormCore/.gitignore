@@ -1,0 +1,2 @@
+# Covers both SwiftPM's directory and the local verification symlink into /tmp.
+.build

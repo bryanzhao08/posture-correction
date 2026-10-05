@@ -47,7 +47,7 @@ struct ScoringConfig: Decodable {
     }
 }
 
-struct Detect: Decodable {
+struct Detect: Codable {
     let restSpeed, restMs, enterSpeed, enterMs, exitSpeed, settleMs, maxLookbackS, refractoryMs, postPeakS: Double
     enum CodingKeys: String, CodingKey {
         case restSpeed = "rest_speed", restMs = "rest_ms", enterSpeed = "enter_speed", enterMs = "enter_ms"
@@ -56,7 +56,7 @@ struct Detect: Decodable {
     }
 }
 
-struct Gates: Decodable {
+struct Gates: Codable {
     let minPeakSpeed, minDurationS, maxDurationS, minPathLen, minVerticalRange, minHorizontalRange: Double
     let minExtent, minPathRatio, startHandMinY, peakHandMaxY: Double?
     enum CodingKeys: String, CodingKey {
@@ -70,13 +70,38 @@ struct Gates: Decodable {
 
 public struct SportProfile: Decodable {
     public let label: String
-    public let camera: String
-    public let metrics: [MetricSpec]
+    public var camera: String
+    public var metrics: [MetricSpec]
     let analyzer: String
     let tracker: String
-    let detect: Detect
-    let gates: Gates
-    let pattern: [String: Double]?
+    public let defaultView: String?
+    public let views: [String: CameraViewProfile]?
+    public let training: [TrainingType]?
+    enum CodingKeys: String, CodingKey {
+        case label, camera, metrics, analyzer, tracker, detect, gates, pattern, views, training
+        case defaultView = "default_view"
+    }
+    public func camera(for view: String) -> String { views?[view]?.camera ?? camera }
+    public func effective(for view: String?) -> SportProfile {
+        guard let view = view, let override = views?[view] else { return self }
+        var result = self
+        func merge<T: Codable>(_ base: T, _ changes: [String: Double]?) -> T {
+            guard let changes = changes else { return base }
+            // These dictionaries contain only numeric detector/gate settings decoded from the profile.
+            var object = try! JSONSerialization.jsonObject(with: JSONEncoder().encode(base)) as! [String: Any]
+            changes.forEach { object[$0.key] = $0.value }
+            return try! JSONDecoder().decode(T.self, from: JSONSerialization.data(withJSONObject: object))
+        }
+        result.detect = merge(detect, override.detect)
+        result.gates = merge(gates, override.gates)
+        if let changes = override.pattern { result.pattern = (pattern ?? [:]).merging(changes) { _, new in new } }
+        if let metrics = override.metrics { result.metrics = metrics }
+        if let camera = override.camera { result.camera = camera }
+        return result
+    }
+    var detect: Detect
+    var gates: Gates
+    var pattern: [String: Double]?
 }
 
 struct TypeTarget: Decodable {
@@ -132,6 +157,9 @@ public struct MetricSummary: Codable {
 }
 
 public struct SessionSummary: Codable {
+    public var view: String? = nil
+    public var focus: String? = nil
+    public var training: String? = nil
     public let sport: String
     public let repCount: Int
     public let rejected: [String: Int]
@@ -144,8 +172,23 @@ public struct SessionSummary: Codable {
     public let activeS: Double
     public let passiveS: Double
     enum CodingKeys: String, CodingKey {
-        case sport, rejected, types, score, consistency, metrics
+        case sport, rejected, types, score, consistency, metrics, view, focus, training
         case repCount = "rep_count", formScore = "form_score", topCues = "top_cues"
         case activeS = "active_s", passiveS = "passive_s"
     }
+}
+
+public struct CameraViewProfile: Decodable {
+    public let camera: String?
+    public let metrics: [MetricSpec]?
+    let detect: [String: Double]?
+    let gates: [String: Double]?
+    let pattern: [String: Double]?
+}
+public struct TrainingType: Decodable, Identifiable {
+    public let id: String
+    public let label: String
+    public let recommended: String
+    public let views: [String]
+    public let why: String
 }

@@ -10,6 +10,9 @@ final class SessionController: ObservableObject {
     let camera: CameraManager
     let sport: Sport
     let profile: SportProfile
+    let view: String?
+    let focus: String?
+    let training: String?
     let jointNames: [String]
     private let handedness: Handedness
     private let startedAt = Date()
@@ -42,12 +45,15 @@ final class SessionController: ObservableObject {
     }
 
     init(profiles: Profiles, sport: Sport, profile: SportProfile, handedness: Handedness,
-         spokenCues: Bool, sharePose: Bool) {
+         spokenCues: Bool, sharePose: Bool, view: String? = nil, focus: String? = nil, training: String? = nil) {
         self.sport = sport
-        self.profile = profile
+        self.view = view
+        self.focus = focus
+        self.training = training
+        self.profile = profile.effective(for: view)
         self.spokenCues = spokenCues
         jointNames = profiles.joints
-        camera = CameraManager(profiles: profiles, sport: sport.rawValue, handedness: handedness, collectPose: sharePose)
+        camera = CameraManager(profiles: profiles, sport: sport.rawValue, handedness: handedness, collectPose: sharePose, view: view, focus: focus)
         #if DEBUG
         self.handedness = camera.isReplaying ? camera.replayHandedness : handedness
         camera.onReplayFinished = { [weak self] in
@@ -118,10 +124,12 @@ final class SessionController: ObservableObject {
     }
     func save(to state: AppState) throws -> String {
         guard let snapshot = snapshot else { throw APIError(message: "The session is still finishing.") }
+        var summary = snapshot.summary
+        summary.view = view; summary.focus = focus; summary.training = training
         let payload = SessionIn(clientID: clientID, sport: sport.rawValue, handedness: handedness,
-            startedAt: Display.timestamp(startedAt), durationS: duration, summary: snapshot.summary,
+            startedAt: Display.timestamp(startedAt), durationS: duration, summary: summary,
             reps: snapshot.reps, appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0",
-            device: Self.deviceIdentifier())
+            device: Self.deviceIdentifier(), view: view, focus: focus)
         return try state.saveSession(payload, recording: snapshot.recording)
     }
     func stop() { disposed = true; camera.stop(); stopSpeech(); restoreAwake() }

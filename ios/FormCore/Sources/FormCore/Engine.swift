@@ -71,6 +71,8 @@ public final class FormEngine {
     public private(set) var passiveSeconds = 0.0
 
     let sport: String
+    public let view: String
+    public let focus: String?
     let profile: SportProfile
     let dom: String
     let off: String
@@ -104,12 +106,14 @@ public final class FormEngine {
     /// dominant shoulder is on while the player faces the camera.
     private(set) var facing = 0.0
 
-    public init(profiles: Profiles, sport: String, handedness: Handedness) {
+    public init(profiles: Profiles, sport: String, handedness: Handedness, view: String? = nil, focus: String? = nil) {
         guard let profile = profiles.sports[sport] else {
             preconditionFailure("unknown sport \(sport)")
         }
         self.sport = sport
-        self.profile = profile
+        self.view = (view?.isEmpty == false ? view : nil) ?? profile.defaultView ?? "front"
+        self.focus = focus
+        self.profile = profile.effective(for: self.view)
         cfg = profiles.preprocess
         scoring = profiles.scoring
         joints = profiles.joints

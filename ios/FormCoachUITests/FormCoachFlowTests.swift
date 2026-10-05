@@ -8,7 +8,7 @@ final class FormCoachFlowTests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
         let backend = ProcessInfo.processInfo.environment["FORMCOACH_UI_TEST_BACKEND"] ?? "http://127.0.0.1:18004"
-        app.launchArguments = ["-uiTesting", "-resetTestAccount", "-backendURL", backend, "-offerMovementDemos", "YES"]
+        app.launchArguments = ["-uiTesting", "-resetTestAccount", "-backendURL", backend, "-offerMovementDemos", "YES", "-resetTrainingChoices"]
         app.launch()
     }
 
@@ -97,11 +97,42 @@ final class FormCoachFlowTests: XCTestCase {
         shot("5-summary")
         app.swipeUp()
         shot("6-summary-scrolled")
-        app.buttons["Done"].tap()
+        for _ in 0..<3 where app.navigationBars["Session summary"].exists {
+            app.buttons["Done"].tap()
+            sleep(1)
+        }
+        XCTAssertFalse(app.navigationBars["Session summary"].exists)
 
         app.tabBars.buttons["History"].tap()
         sleep(3)
         shot("7-history")
+        app.tabBars.buttons["Practise"].tap()
+        let tennis = app.buttons.containing(NSPredicate(format: "label CONTAINS 'Tennis'")).firstMatch
+        for _ in 0..<4 { if tennis.isHittable { break }; app.swipeUp() }
+        tennis.tap()
+        XCTAssertTrue(app.buttons["training.start"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["training.camera"].label.contains("From behind"))
+        app.buttons["training.type"].tap()
+        app.buttons["Serve"].tap()
+        XCTAssertTrue(app.staticTexts["training.camera"].label.contains("Side-on"))
+        app.buttons["From behind"].tap()
+        XCTAssertTrue(app.staticTexts["training.camera"].label.contains("From behind"))
+        shot("8-tennis-training")
+        app.buttons["training.start"].tap()
+        XCTAssertTrue(app.buttons["End session"].waitForExistence(timeout: 10))
+        app.buttons["End session"].tap()
+        XCTAssertTrue(app.navigationBars["Session summary"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.staticTexts["Tennis · Serve · from behind"].exists)
+        for _ in 0..<3 where app.navigationBars["Session summary"].exists {
+            app.buttons["Done"].tap()
+            sleep(1)
+        }
+        XCTAssertFalse(app.navigationBars["Session summary"].exists)
+        tennis.tap()
+        XCTAssertTrue(app.buttons["training.start"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["training.camera"].label.contains("From behind"))
+        XCTAssertTrue(app.buttons["training.type"].label.contains("Serve"))
+        app.buttons["Cancel"].tap()
     }
 }
 
@@ -110,11 +141,12 @@ final class DemoCatalogCoverageTests: XCTestCase {
         let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "cue_catalog", withExtension: "json"))
         let entries = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [[String: Any]])
         let keys = try entries.map { try XCTUnwrap($0["key"] as? String) }
-        XCTAssertEqual(keys.count,36)
+        XCTAssertEqual(keys.count,46)
         XCTAssertEqual(Set(keys).count,keys.count)
         for key in keys { XCTAssertNotNil(DemoMotionTable.entries[key],key) }
         for sport in ["golf","basketball","tennis","pickleball"] { XCTAssertNotNil(DemoMotionTable.entries["setup." + sport]) }
-        XCTAssertEqual(DemoMotionTable.entries.count,40)
+        for view in ["front","back","side"] { XCTAssertNotNil(DemoMotionTable.entries["setup.tennis." + view]) }
+        XCTAssertEqual(DemoMotionTable.entries.count,53)
         for (key,spec) in DemoMotionTable.entries {
             XCTAssertNotEqual(spec.wrong,spec.correct,key)
         }

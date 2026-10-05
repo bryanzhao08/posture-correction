@@ -10,9 +10,9 @@ struct SessionFlow: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var controller: SessionController
     @State private var savedID: String?
-    init(profiles: Profiles, sport: Sport, profile: SportProfile, handedness: Handedness, spokenCues: Bool, sharePose: Bool) {
+    init(profiles: Profiles, sport: Sport, profile: SportProfile, handedness: Handedness, spokenCues: Bool, sharePose: Bool, view: String? = nil, focus: String? = nil, training: String? = nil) {
         _controller = StateObject(wrappedValue: SessionController(profiles: profiles, sport: sport, profile: profile,
-            handedness: handedness, spokenCues: spokenCues, sharePose: sharePose))
+            handedness: handedness, spokenCues: spokenCues, sharePose: sharePose, view: view, focus: focus, training: training))
     }
     var body: some View {
         Group {

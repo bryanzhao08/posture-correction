@@ -248,7 +248,7 @@ func analyzeRacket(_ seg: [Sample], _ ctx: FormEngine) -> Analysis? {
         if min(lat[back], lat[thru]) > -cross || max(lat[back], lat[thru]) < cross { return nil }
         contact = argmax(sp, back, thru)
         if contact <= back { contact = back + 1 }
-        repType = lat[back] > lat[thru] ? "forehand" : "backhand"
+        repType = ctx.view == "side" ? (ctx.focus == "backhand" ? "backhand" : "forehand") : (lat[back] > lat[thru] ? "forehand" : "backhand")
     }
     let c = seg[contact]
     let reach = abs(lat[thru] - lat[back])
@@ -298,6 +298,32 @@ func analyzeRacket(_ seg: [Sample], _ ctx: FormEngine) -> Analysis? {
         }
         m["head_stability"] = move
     }
-    let ev = ["backswing": b.t, "contact": c.t, "finish": seg[thru].t]
+    let fh = argmin(ry, contact, n - 1)
+    let f = seg[fh]
+    m["finish_height"] = (f.pts[o + "_shoulder"]!.y - f.pts[d + "_wrist"]!.y) / f.torso
+    if let el = f.pts[d + "_elbow"], let nz = f.pts["nose"] { m["elbow_finish"] = (nz.y - el.y) / f.torso }
+    var offReach: Double?
+    for i in 0...contact {
+        if let ow = seg[i].pts[o + "_wrist"], let osh = seg[i].pts[o + "_shoulder"] {
+            let r = dist(ow, osh) / seg[i].torso
+            offReach = max(offReach ?? r, r)
+        }
+    }
+    m["off_hand_reach"] = offReach
+    m["spacing"] = abs(c.rx)
+    let fwd = c.rx >= b.rx ? 1.0 : -1.0
+    m["contact_front"] = c.rx * fwd
+    if let la = c.pts["l_ankle"], let ra = c.pts["r_ankle"] {
+        m["contact_front"] = (c.pts[d + "_wrist"]!.x * fwd - max(la.x * fwd, ra.x * fwd)) / c.torso
+    }
+    m["extension_through"] = seg[contact...].map { $0.rx * fwd }.max()! - c.rx * fwd
+    if let la = b.pts["l_ankle"], let ra = b.pts["r_ankle"], abs(la.x - ra.x) / b.torso >= 0.3 {
+        let backX = la.x * fwd <= ra.x * fwd ? la.x : ra.x
+        let frontX = la.x * fwd <= ra.x * fwd ? ra.x : la.x
+        let width = (frontX - backX) * fwd
+        m["back_load"] = (b.hip.x - backX) * fwd / width
+        m["weight_shift"] = (c.hip.x - b.hip.x) * fwd / width
+    }
+    let ev = ["backswing": b.t, "contact": c.t, "finish": seg[thru].t, "follow_through": f.t]
     return Analysis(type: repType, events: ev, metrics: m)
 }

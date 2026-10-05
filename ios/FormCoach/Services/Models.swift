@@ -56,9 +56,19 @@ struct SessionIn: Codable {
     let reps: [Rep]
     let appVersion: String
     let device: String
+    var view: String? = nil
+    var focus: String? = nil
     enum CodingKeys: String, CodingKey {
         case clientID = "client_id", sport, handedness, startedAt = "started_at"
-        case durationS = "duration_s", summary, reps, appVersion = "app_version", device
+        case durationS = "duration_s", summary, reps, appVersion = "app_version", device, view, focus
+    }
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(clientID, forKey: .clientID); try c.encode(sport, forKey: .sport)
+        try c.encode(handedness, forKey: .handedness); try c.encode(startedAt, forKey: .startedAt)
+        try c.encode(durationS, forKey: .durationS); try c.encode(summary, forKey: .summary)
+        try c.encode(reps, forKey: .reps); try c.encode(appVersion, forKey: .appVersion)
+        try c.encode(device, forKey: .device); try c.encode(view, forKey: .view); try c.encode(focus, forKey: .focus)
     }
 }
 struct SessionListItem: Codable, Identifiable {
@@ -157,7 +167,9 @@ struct Recording: Codable {
     let handedness: Handedness
     let aspect: Double
     var frames: [PoseFrame]
-    enum CodingKeys: String, CodingKey { case sport, handedness, aspect, frames }
+    var view: String? = nil
+    var focus: String? = nil
+    enum CodingKeys: String, CodingKey { case sport, handedness, aspect, frames, view, focus }
 }
 struct PoseFrame: Codable {
     let t: Double

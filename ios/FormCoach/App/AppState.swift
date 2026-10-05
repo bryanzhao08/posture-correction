@@ -25,6 +25,12 @@ final class AppState: ObservableObject {
         #if DEBUG && targetEnvironment(simulator)
         // The end-to-end registration test uses an isolated backend and cannot reuse another server's login.
         if CommandLine.arguments.contains("-uiTesting") && CommandLine.arguments.contains("-resetTestAccount") {
+            if CommandLine.arguments.contains("-resetTrainingChoices") {
+                for sport in Sport.allCases {
+                    UserDefaults.standard.removeObject(forKey: "training." + sport.rawValue)
+                    UserDefaults.standard.removeObject(forKey: "trainingView." + sport.rawValue)
+                }
+            }
             try? KeychainStore.delete()
             UserDefaults.standard.removeObject(forKey: "cachedUser")
         }

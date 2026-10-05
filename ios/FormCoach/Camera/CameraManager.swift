@@ -29,7 +29,7 @@ final class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
     var onReplayFinished: (() -> Void)?
     #endif
 
-    init(profiles: Profiles, sport: String, handedness: Handedness, collectPose: Bool) {
+    init(profiles: Profiles, sport: String, handedness: Handedness, collectPose: Bool, view: String? = nil, focus: String? = nil) {
         detector = PoseDetector(jointNames: profiles.joints)
         markerTracker = OrangeMarkerTracker(names: profiles.joints, sport: sport, handedness: handedness)
         markersEnabled = sport != "basketball" && UserDefaults.standard.bool(forKey: "orangeMarkers." + sport)
@@ -44,7 +44,7 @@ final class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
         #else
         engineHandedness = handedness
         #endif
-        pipeline = PoseSessionPipeline(profiles: profiles, sport: sport, handedness: engineHandedness, collectPose: collectPose)
+        pipeline = PoseSessionPipeline(profiles: profiles, sport: sport, handedness: engineHandedness, collectPose: collectPose, view: view, focus: focus)
         #if DEBUG
         replaySport = sport
         #endif

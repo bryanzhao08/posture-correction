@@ -23,6 +23,8 @@ struct SessionCapture {
 // All callers own this object on their source's serial queue. Counting/scoring stay in FormCore.
 final class PoseSessionPipeline {
     private let engine: FormEngine
+    private let view: String?
+    private let focus: String?
     private let sport: String
     private let handedness: Handedness
     private let jointNames: [String]
@@ -36,12 +38,13 @@ final class PoseSessionPipeline {
     var upright = false
     var engineState: EngineState { engine.state }
 
-    init(profiles: Profiles, sport: String, handedness: Handedness, collectPose: Bool) {
+    init(profiles: Profiles, sport: String, handedness: Handedness, collectPose: Bool, view: String? = nil, focus: String? = nil) {
+        self.view = view; self.focus = focus
         self.sport = sport
         self.handedness = handedness
         self.jointNames = profiles.joints
         self.collectPose = collectPose
-        engine = FormEngine(profiles: profiles, sport: sport, handedness: handedness)
+        engine = FormEngine(profiles: profiles, sport: sport, handedness: handedness, view: view, focus: focus)
     }
     func resetSetup() { setupSince = nil; countingStarted = false }
     func processFrame(t: Double, joints: [JointObservation?], aspect: Double, mirrored: Bool, markers: [MarkerPoint] = []) -> CameraFrameState {
@@ -94,7 +97,7 @@ final class PoseSessionPipeline {
     }
     func finish() -> SessionCapture {
         let recording = collectPose && !frames.isEmpty
-            ? Recording(sport: sport, handedness: handedness, aspect: aspect, frames: frames) : nil
+            ? Recording(sport: sport, handedness: handedness, aspect: aspect, frames: frames, view: view, focus: focus) : nil
         let snapshot = SessionCapture(summary: engine.summary(), reps: engine.reps, recording: recording)
         frames.removeAll()
         return snapshot

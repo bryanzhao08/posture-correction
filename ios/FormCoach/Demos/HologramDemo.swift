@@ -217,14 +217,22 @@ final class HologramStage {
     }
     func setCamera(_ time:Float) {
         let setup=spec.base == .tripod
-        let angle:Float = setup ? 2.2 : 0.72 + sin(time*0.14)*0.12
+        let sideCue = ["contact_front", "extension_through", "back_load", "weight_shift", "contact_arm.low@side"].contains { cue.key.contains($0) }
+        let behindCue = ["spacing", "finish_height", "elbow_finish", "off_hand_reach"].contains { cue.key.contains($0) }
+        let sideSign:Float = correct.root.scale.x < 0 ? -1 : 1
+        let setupYaw:Float = cue.key.hasSuffix(".back") ? .pi : (cue.key.hasSuffix(".side") ? sideSign * .pi/2 : 0)
+        let angle:Float = setup ? 2.2+setupYaw : (sideCue ? sideSign * 1.5 : (behindCue ? 2.9 : 0.72)) + sin(time*0.14)*0.12
         let radius:Float=setup ? 6 : 3.7
         camera.position=SCNVector3(sin(angle)*radius,setup ? 2.6 : 2.15,cos(angle)*radius)
-        camera.look(at:SCNVector3(0,setup ? 0.9 : 1,setup ? 1.2 : 0))
+        camera.look(at:SCNVector3(setup ? sin(setupYaw)*1.2 : 0,setup ? 0.9 : 1,setup ? cos(setupYaw)*1.2 : 0))
     }
     /// A shared, fixed phase for positional cues; timing cues compare the same elapsed seconds.
     func reviewTime(_ motion:DemoMotion) -> Float {
         let key=cue.key
+        if key.contains("back_load") || key.contains("off_hand_reach") { return motion.back }
+        if key.contains("spacing") || key.contains("weight_shift") { return motion.back+motion.hitch+motion.down }
+        if key.contains("extension_through") { return motion.back+motion.hitch+motion.down+0.35 }
+        if key.contains("finish_height") || key.contains("elbow_finish") { return motion.back+motion.hitch+motion.down+0.75 }
         if key.contains("leg_drive") { return 0 }
         if key.contains("rhythm") { let good=DemoMotion(base:spec.base,parameters:spec.correct); return good.back+good.down }
         if key.contains("tempo") { return DemoMotion(base:spec.base,parameters:spec.correct).back+0.15 }
@@ -267,9 +275,12 @@ final class HologramStage {
             HologramFigure.segment(leg,from:SIMD3(0,0.38,distance),to:SIMD3(sin(angle)*0.35,0.02,distance+cos(angle)*0.35))
         }
         // Four transparent frustum faces, physically projected at the athlete's plane.
-        let vertical:Float=0.45, halfHeight=distance*vertical, halfWidth=halfHeight*0.48
-        let corners=[SIMD3<Float>(-halfWidth,height-halfHeight,0),SIMD3(halfWidth,height-halfHeight,0),
-                     SIMD3(halfWidth,height+halfHeight,0),SIMD3(-halfWidth,height+halfHeight,0)]
+        // The higher rear-view lens aims down at the torso; its frame must still include the feet.
+        let tennisView=cue.key.hasPrefix("setup.tennis.") && !wrong
+        let targetHeight:Float=tennisView ? 0.95 : height
+        let halfHeight:Float=tennisView ? 1.05 : distance*0.45, halfWidth=halfHeight*0.48
+        let corners=[SIMD3<Float>(-halfWidth,targetHeight-halfHeight,0),SIMD3(halfWidth,targetHeight-halfHeight,0),
+                     SIMD3(halfWidth,targetHeight+halfHeight,0),SIMD3(-halfWidth,targetHeight+halfHeight,0)]
         for i in 0..<4 {
             let vertices=[SCNVector3(centre),SCNVector3(corners[i]),SCNVector3(corners[(i+1)%4])]
             let indices:[Int32]=[0,1,2]
@@ -278,7 +289,7 @@ final class HologramStage {
             let edge=add(SCNCylinder(radius:0.004,height:1),.zero)
             HologramFigure.segment(edge,from:centre,to:corners[i]); edge.opacity=0.2
         }
-        let label=text(wrong ? "1 m • too close / low" : (cue.sport == "tennis" ? "4–6 m" : (cue.sport == "golf" ? "3–4 m" : "3–5 m")),at:SCNVector3(0.12,0.18,distance/2),color:color)
+        let label=text(wrong ? "1 m • too close / low" : (cue.sport == "tennis" ? (cue.key.hasSuffix(".back") ? "2–4 m • 1.4–1.7 m high" : (cue.key.hasSuffix(".side") ? "4–6 m • 1.0–1.3 m high" : "4–6 m")) : (cue.sport == "golf" ? "3–4 m" : "3–5 m")),at:SCNVector3(0.12,0.18,distance/2),color:color)
         label.scale=SCNVector3(0.13,0.13,0.13)
         setupNodes.append(label)
         if wrong {
@@ -286,6 +297,12 @@ final class HologramStage {
             cutoff.opacity=0.5
             setupNodes.append(text("Head outside frame",at:SCNVector3(-0.45,1.95,0),color:.red))
         }
+    }
+    func orientSetup(_ nodes:[SCNNode]) {
+        let sideSign:Float = correct.root.scale.x < 0 ? -1 : 1
+        let angle:Float = cue.key.hasSuffix(".back") ? .pi : (cue.key.hasSuffix(".side") ? sideSign * .pi/2 : 0)
+        let q=simd_quatf(angle:angle,axis:SIMD3(0,1,0))
+        for node in nodes { node.simdPosition=q.act(node.simdPosition); node.simdOrientation=q*node.simdOrientation }
     }
     func play(mode:DemoPlayback,reduceMotion:Bool,keyMoment:Bool) {
         scene.rootNode.removeAllActions()
@@ -310,9 +327,11 @@ final class HologramStage {
         draw(0)
         if spec.base == .tripod {
             setup(parameters:mode == .wrong ? spec.wrong : spec.correct,wrong:mode == .wrong)
+            orientSetup(setupNodes)
             if mode == .both {
                 let first=setupNodes.count
                 setup(parameters:spec.wrong,wrong:true,clear:false)
+                orientSetup(Array(setupNodes.dropFirst(first)))
                 for node in setupNodes.dropFirst(first) { node.opacity *= 0.28 }
             }
         }

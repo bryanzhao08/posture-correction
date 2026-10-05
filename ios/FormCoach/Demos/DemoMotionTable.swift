@@ -49,6 +49,21 @@ enum DemoMotionTable {
         add("pickleball.contact_height.high", .pickleballDrive, "lowBallLoad", 0, 1)
         add("pickleball.swing_through.low", .pickleballDrive, "swingThrough", 0, 1)
         add("pickleball.head_stability.high", .pickleballDink, "headTurnEarly", 75, 0)
+        add("tennis.finish_height.low", .tennisForehand, "finishHeight", -0.35, 0.25)
+        add("tennis.elbow_finish.low", .tennisForehand, "finishElbowLift", 0, 2.3)
+        add("tennis.off_hand_reach.low", .tennisForehand, "offReach", 0.1, 0.58)
+        add("tennis.spacing.low", .tennisForehand, "contactSpacing", 0.08, 0.38)
+        add("tennis.spacing.high", .tennisForehand, "contactSpacing", 0.72, 0.38)
+        add("tennis.contact_front.low", .tennisForehand, "contactFront", -0.12, 0.48)
+        add("tennis.extension_through.low", .tennisForehand, "extensionThrough", 0, 0.55)
+        add("tennis.back_load.high", .tennisForehand, "backLoad", 0.20, -0.23)
+        add("tennis.weight_shift.low", .tennisForehand, "weightTransfer", 0, 0.32)
+        add("tennis.contact_arm.low@side", .tennisBackhand, "armExtensionAtContact", 80, 5)
+        for view in ["front", "back", "side"] {
+            t["setup.tennis." + view] = MotionSpec(base: .tripod,
+                wrong: ["tripodHeight": 0.35, "tripodDistance": 1],
+                correct: ["tripodHeight": view == "back" ? 1.55 : 1.15, "tripodDistance": view == "back" ? 3 : 5])
+        }
         for sport in ["golf", "basketball", "tennis", "pickleball"] {
             t["setup." + sport] = MotionSpec(base: .tripod,
                 wrong: ["tripodHeight": 0.35, "tripodDistance": 1],

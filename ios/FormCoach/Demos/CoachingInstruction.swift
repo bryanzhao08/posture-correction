@@ -18,7 +18,9 @@ enum DemoCatalog {
         return cues
     }()
     static func entry(_ text: String, sport: String, setup: Bool) -> DemoCue? {
-        if setup { return DemoCue(key: "setup." + sport, sport: sport, text: text,
+        if setup {
+            let view = text.hasPrefix("From behind") ? "back" : (text.hasPrefix("Side-on") ? "side" : "front")
+            return DemoCue(key: "setup." + sport + (sport == "tennis" ? "." + view : ""), sport: sport, text: text,
             meaning: "Place the phone on a stable tripod with your whole body visible.",
             wrongMotion: "The phone is too low and close to the player.", correctMotion: text) }
         return cues.first { $0.sport == sport && $0.text == text }

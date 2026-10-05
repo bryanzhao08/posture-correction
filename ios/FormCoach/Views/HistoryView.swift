@@ -13,9 +13,9 @@ struct HistoryView: View {
     private var entries: [HistoryEntry] {
         (local.map { HistoryEntry(id: $0.id, localID: $0.id, serverID: nil,
             startedAt: $0.payload.startedAt, score: $0.payload.summary.score,
-            reps: $0.payload.summary.repCount, queued: $0.server == nil) }
+            reps: $0.payload.summary.repCount, queued: $0.server == nil, context: $0.payload.summary.view == nil ? nil : SessionContext.label($0.payload.sport, summary: $0.payload.summary, profile: state.profiles?.sports[$0.payload.sport])) }
          + remote.map { HistoryEntry(id: $0.clientID, localID: nil, serverID: $0.id,
-            startedAt: $0.startedAt, score: $0.score, reps: $0.repCount, queued: false) })
+            startedAt: $0.startedAt, score: $0.score, reps: $0.repCount, queued: false, context: state.cachedDetail($0.id).flatMap { $0.summary.view == nil ? nil : SessionContext.label($0.sport, summary: $0.summary, profile: state.profiles?.sports[$0.sport]) }) })
         .sorted { Display.date($0.startedAt) > Display.date($1.startedAt) }
     }
     private var trend: [HistoryEntry] {
@@ -78,13 +78,13 @@ struct HistoryView: View {
                             NavigationLink {
                                 LocalSummaryView(sessionID: localID)
                             } label: {
-                                SessionRow(startedAt: session.startedAt, score: session.score, reps: session.reps, queued: session.queued)
+                                SessionRow(startedAt: session.startedAt, score: session.score, reps: session.reps, queued: session.queued, context: session.context)
                             }
                         } else if let serverID = session.serverID {
                             NavigationLink {
                                 ServerDetailView(id: serverID)
                             } label: {
-                                SessionRow(startedAt: session.startedAt, score: session.score, reps: session.reps, queued: false)
+                                SessionRow(startedAt: session.startedAt, score: session.score, reps: session.reps, queued: false, context: session.context)
                             }
                         }
                     }
@@ -119,9 +119,11 @@ struct SessionRow: View {
     let score: Double?
     let reps: Int
     let queued: Bool
+    var context: String? = nil
     var body: some View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
+                if let context = context { Text(context).font(.subheadline) }
                 Text(Display.date(startedAt), format: .dateTime.month().day().hour().minute())
                 Text("\(reps) reps" + (queued ? " · Saved locally" : " · Synced")).font(.caption).foregroundStyle(.secondary)
             }
@@ -139,4 +141,5 @@ private struct HistoryEntry: Identifiable {
     let score: Double?
     let reps: Int
     let queued: Bool
+    var context: String? = nil
 }

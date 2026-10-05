@@ -274,3 +274,48 @@ Coach review remains appropriate for the exaggerated low-ball knee load in
 `tennis.contact_height.high` / `pickleball.contact_height.high`, the exaggerated lateral
 upper-body lean in `golf.head_sway.high`, and the stylized serve toss and one-handed backhand
 sequencing. These illustrative poses do not establish athlete-level biomechanics.
+
+## Batch 5: tennis training and camera views
+
+`FormEngine` accepts optional `view` and `focus`. It defaults to the sport's `default_view`
+(or front), merges per-view detection/gate/pattern settings by key, and replaces camera text and
+metric lists. The racket analyzer now includes follow-through height, elbow finish, free-hand
+reach, spacing, front-foot-relative contact, extension, back-leg load and weight transfer.
+Side-view groundstrokes use the explicit backhand focus when supplied; otherwise they are
+forehands, matching the Python reference.
+
+Tennis opens a training selector before capture. Groundstrokes, contact/weight transfer, serve
+and volleys each expose the allowed camera views and their recommended setup. Starting practice
+remembers that training/view pair for the sport. Serve supplies `focus="serve"`; the other
+options leave focus nil. Golf, basketball and pickleball keep their existing direct session flow.
+The selected profile drives both engine scoring and setup instructions. Uploads include top-level
+`view` and `focus` (including explicit null values), and summary metadata retains the training
+label and view for local and synced history. Old sessions without this metadata remain readable.
+Pose recordings also retain view/focus when collected.
+
+The DEBUG gallery now has 46 catalog cues and six setup entries (52 visible entries). The legacy
+`setup.tennis` table entry remains for compatibility. Front, behind and forehand-side tennis setup
+demos have separate tripod placements. New contact/weight/extension cues use a side camera;
+spacing and finish cues use a camera behind the player. The full gallery test captures 104 PNGs.
+For a targeted review, the test runner accepts `FORMCOACH_GALLERY_REVIEW_KEYS` containing a
+comma-separated list of exact keys, including `@side` suffixes.
+
+Verification: the untouched Python/Swift parity test passed (one test). The complete 52-entry
+gallery and original ten UI tests passed in `batch5/tests-final.xcresult`; after the final
+motion refinements, all eleven tests passed in `batch5/tests-verified.xcresult`, with the gallery
+restricted to the thirteen new tennis entries. This includes five anatomy checks, catalog coverage,
+registration/replay/upload, training defaults and persistence, and three marker checks.
+Build output and result bundles are under `/tmp/formcoach-codex/batch5/`. The requested
+26 PNGs are in `/tmp/formcoach-codex/gallery5/`; all were inspected using three contact sheets
+in `batch5/attachments-verified/`. Screenshot tests verify the segmented mode actually changed
+before capture, and the session test waits for summary dismissal before navigating.
+
+Changed files span FormCore Models/Engine/Sports and formcore-check, camera/controller/recording
+plumbing, Home/TrainingSessionFlow/Session/Summary/History views, session upload models, demo
+catalog/gallery/motion/staging, test-account reset, both UI test files and this README. FormCore's
+local `.build` path is ignored and points to temporary output for parity verification.
+
+Coach review is still appropriate for the stylized free-arm reach and finish-elbow poses, and
+for the staggered stance used to illustrate loading and transfer; these illustrate cue differences
+rather than establish athlete-level biomechanics. Existing serve/backhand sequencing caveats
+above still apply.

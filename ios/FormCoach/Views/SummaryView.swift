@@ -84,7 +84,7 @@ struct SummaryContent<Status: View>: View {
         List {
             Section {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text(state.profiles?.sports[sport]?.label ?? sport.capitalized).font(.title2.bold())
+                    Text(SessionContext.label(sport, summary: summary, profile: state.profiles?.sports[sport])).font(.title2.bold())
                     HStack(alignment: .firstTextBaseline, spacing: 24) {
                         VStack(alignment: .leading) {
                             Text(Display.score(summary.score)).font(.system(size: scoreFontSize, weight: .bold, design: .rounded)).monospacedDigit()
@@ -99,7 +99,7 @@ struct SummaryContent<Status: View>: View {
                     Text("\(Int(duration / 60)) min \(Int(duration) % 60) sec · Active \(Int(summary.activeS)) sec · Rest \(Int(summary.passiveS)) sec")
                         .font(.caption).foregroundStyle(.secondary)
                     if summary.repCount == 0 {
-                        Text("No completed reps were counted. Set up face-on, hold still until Ready, then complete a full motion.")
+                        Text(summary.view == nil ? "No completed reps were counted. Set up face-on, hold still until Ready, then complete a full motion." : "No completed reps were counted. Use your selected camera view, hold still until Ready, then complete a full motion.")
                     }
                     HStack {
                         Text("Form: \(Display.score(summary.formScore))")
@@ -115,7 +115,7 @@ struct SummaryContent<Status: View>: View {
             }
             Section("Your metrics and professional targets") {
                 if let profile = state.profiles?.sports[sport] {
-                    ForEach(profile.metrics, id: \.id) { spec in
+                    ForEach(profile.effective(for: summary.view).metrics, id: \.id) { spec in
                         VStack(alignment: .leading, spacing: 8) {
                             Text(spec.label).font(.headline)
                             Text("You: \(Display.number(summary.metrics[spec.id]?.mean, unit: spec.unit))")
@@ -168,7 +168,7 @@ struct SummaryContent<Status: View>: View {
                     ForEach(Array(reps.enumerated()), id: \.offset) { index, rep in
                         DisclosureGroup("Rep \(index + 1) · \(rep.type.capitalized) · \(Display.score(rep.score))/100") {
                             ForEach(rep.metrics.keys.sorted(), id: \.self) { metric in
-                                let spec = state.profiles?.sports[sport]?.metrics.first { $0.id == metric }
+                                let spec = state.profiles?.sports[sport]?.effective(for: summary.view).metrics.first { $0.id == metric }
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(spec?.label ?? metric)
                                     Text(Display.number(rep.metrics[metric], unit: spec?.unit ?? ""))

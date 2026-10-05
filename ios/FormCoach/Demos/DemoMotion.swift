@@ -5,6 +5,7 @@ import simd
 /// Feet are world-space anchors; the golf grip is one shared target for both arms.
 struct DemoPose {
     var spine: Float = 8, shoulderTurn: Float = 0, hipTurn: Float = 0, knee: Float = 20
+    var pelvisZ: Float = 0, stagger: Float = 0, elbowLift: Float = 0
     var pelvisX: Float = 0, jump: Float = 0, headX: Float = 0, headDrop: Float = 0, headYaw: Float = 0
     var grip = SIMD3<Float>(0.25, -0.2, 0.35) // relative to shoulder centre in the torso frame
     var guide = SIMD3<Float>(-0.2, -0.25, 0.3)
@@ -17,6 +18,7 @@ struct DemoPose {
         func m(_ a: Float,_ b: Float) -> Float { a+(b-a)*f }
         var p = Self()
         p.spine=m(a.spine,b.spine); p.shoulderTurn=m(a.shoulderTurn,b.shoulderTurn); p.hipTurn=m(a.hipTurn,b.hipTurn)
+        p.pelvisZ=m(a.pelvisZ,b.pelvisZ); p.stagger=m(a.stagger,b.stagger); p.elbowLift=m(a.elbowLift,b.elbowLift)
         p.knee=m(a.knee,b.knee); p.pelvisX=m(a.pelvisX,b.pelvisX); p.jump=m(a.jump,b.jump)
         p.headX=m(a.headX,b.headX); p.headDrop=m(a.headDrop,b.headDrop); p.headYaw=m(a.headYaw,b.headYaw)
         p.grip=simd_mix(a.grip,b.grip,SIMD3(repeating:f)); p.guide=simd_mix(a.guide,b.guide,SIMD3(repeating:f))
@@ -114,11 +116,45 @@ struct DemoMotion {
             if p("swingThrough",1)<0.5 { end=hit }
             if overhead { end.grip=SIMD3(-0.28,-0.18,0.35); end.shaft=SIMD3(-0.5,-0.6,0.6) }
         }
+        if parameters["finishHeight"] != nil { end.grip.y=p("finishHeight",0.25) }
+        if parameters["finishElbowLift"] != nil { end.elbowLift=p("finishElbowLift",2.3); end.grip=SIMD3(-0.15,0.24,0.30) }
+        if parameters["offReach"] != nil { top.guide=SIMD3(-0.18,-0.10,p("offReach",0.58)) }
+        if parameters["contactSpacing"] != nil { hit.grip.x=p("contactSpacing",0.38); hit.grip.z=0.22 }
+        if parameters["contactFront"] != nil { hit.grip.z=p("contactFront",0.48); hit.shoulderTurn=0; hit.hipTurn=0 }
+        if parameters["extensionThrough"] != nil {
+            end=hit
+            if p("extensionThrough",0.55)>0 {
+                end.grip=hit.grip+SIMD3(0,0,p("extensionThrough",0.55)); end.shaft=SIMD3(0,0.15,0.98)
+            } else {
+                end.grip=SIMD3(-0.28,0.18,0.32); end.shaft=SIMD3(-0.8,0.5,0.1)
+            }
+        }
+        if parameters["backLoad"] != nil || parameters["weightTransfer"] != nil {
+            a.stagger=0.27; top.stagger=0.27; hit.stagger=0.27; end.stagger=0.27
+            a.hipTurn=0; top.hipTurn=0; hit.hipTurn=0; end.hipTurn=0
+            top.pelvisZ=p("backLoad",-0.23)
+            hit.pelvisZ=parameters["weightTransfer"] != nil ? top.pelvisZ+p("weightTransfer",0.32) : 0.12; end.pelvisZ=hit.pelvisZ
+        }
+        if base == .tennisBackhand && parameters["armExtensionAtContact"] != nil {
+            let reach=sqrt(0.342*0.342+0.27*0.27+2*0.342*0.27*cos(p("armExtensionAtContact",5)*Float.pi/180))
+            hit.grip=SIMD3(0.18,0,0)+simd_normalize(SIMD3<Float>(-0.3,-0.2,0.7))*reach
+        }
         return [a,top,hit,end,a]
     }
     /// Common elapsed time for Both: timing defects are visible as a phase lag against the correct ghost.
     func sample(_ seconds: Float) -> DemoPose {
         let f=frames
+        if parameters["extensionThrough"] != nil {
+            let contact=back+hitch+down
+            if seconds>contact+0.35 {
+                var finish=f[3]
+                finish.shoulderTurn = -55; finish.hipTurn = -35
+                finish.grip=SIMD3(-0.28,0.18,0.32); finish.shaft=SIMD3(-0.8,0.5,0.1)
+                if seconds<=contact+0.85 { return .blend(f[3],finish,(seconds-contact-0.35)/0.5) }
+                if seconds<=duration-0.55 { return finish }
+                return .blend(finish,f[4],max(0,min(1,(seconds-duration+0.55)/0.55)))
+            }
+        }
         let times:[Float]=[0,back,back+hitch,back+hitch+down,back+hitch+down+0.35,duration-0.55,duration]
         let poses=[f[0],f[1],f[1],f[2],f[3],f[3],f[4]]
         for i in 0..<6 where seconds <= times[i+1] {
@@ -144,9 +180,18 @@ struct DemoSkeleton {
         return root+axis*along+perpendicular*sqrt(max(0,upper*upper-along*along))
     }
     init(p: DemoPose,base: BaseMotion) {
-        let pelvis=SIMD3<Float>(p.pelvisX,0.055+0.895*cos(p.knee*Float.pi/360)-(p.pelvisX-p.footShift)*(p.pelvisX-p.footShift)/1.8+p.jump,0)
+        let hips=Self.rotation(p.hipTurn)
+        var legReachHeight:Float = .greatestFiniteMagnitude
+        for (side,x) in [("l",Float(-0.16)),("r",Float(0.16))] {
+            let hipOffset=hips.act(SIMD3(x,0,0))
+            let dx=p.pelvisX+hipOffset.x-(x*1.4+p.footShift)
+            let dz=p.pelvisZ+hipOffset.z-(0.03+(side == "l" ? p.stagger : -p.stagger))
+            let ankleY=0.055+p.jump+(side == "r" ? p.trailHeel : 0)
+            legReachHeight=min(legReachHeight,ankleY+sqrt(max(0.1,0.8998*0.8998-dx*dx-dz*dz)))
+        }
+        let pelvis=SIMD3<Float>(p.pelvisX,min(legReachHeight,0.055+0.895*cos(p.knee*Float.pi/360)-(p.pelvisX-p.footShift)*(p.pelvisX-p.footShift)/1.8+p.jump),p.pelvisZ)
         let sideLean = -asin(max(-0.9,min(0.9,p.headX/(0.74*cos(p.spine*Float.pi/180)))))
-        let r=simd_quatf(angle:sideLean,axis:SIMD3(0,0,1))*Self.rotation(p.shoulderTurn,p.spine), hips=Self.rotation(p.hipTurn)
+        let r=simd_quatf(angle:sideLean,axis:SIMD3(0,0,1))*Self.rotation(p.shoulderTurn,p.spine)
         let shoulder=pelvis+r.act(SIMD3(0,0.49,0))
         let left=shoulder+r.act(SIMD3(-0.18,0,0)), right=shoulder+r.act(SIMD3(0.18,0,0))
         grip=shoulder+r.act(p.grip); shaft=simd_normalize(p.shaft)
@@ -177,10 +222,10 @@ struct DemoSkeleton {
         points=["pelvis":pelvis,"chest":shoulder,"head":head,"l_shoulder":left,"r_shoulder":right,
                 "l_wrist":leftWrist,"r_wrist":rightWrist]
         points["l_elbow"]=Self.elbow(left,leftWrist,r.act(SIMD3(-0.4,-1,0.4)),0.342,0.27)
-        points["r_elbow"]=Self.elbow(right,rightWrist,r.act(SIMD3(0.15+p.elbowFlare,-1,0.15)),0.342,0.27)
+        points["r_elbow"]=Self.elbow(right,rightWrist,r.act(SIMD3(0.15+p.elbowFlare,-1+p.elbowLift,0.15)),0.342,0.27)
         for (side,x) in [("l",Float(-0.16)),("r",Float(0.16))] {
             let hip=pelvis+hips.act(SIMD3(x,0,0))
-            let foot=SIMD3<Float>(x*1.4+p.footShift,0.055+p.jump+(side == "r" ? p.trailHeel : 0),0.03)
+            let foot=SIMD3<Float>(x*1.4+p.footShift,0.055+p.jump+(side == "r" ? p.trailHeel : 0),0.03+(side == "l" ? p.stagger : -p.stagger))
             points[side+"_hip"]=hip; points[side+"_ankle"]=foot
             points[side+"_knee"]=Self.elbow(hip,foot,SIMD3(0,0,1),0.45,0.45)
         }

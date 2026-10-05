@@ -1,7 +1,7 @@
 import XCTest
 import simd
 
-/// SLOW visual audit: opens all 40 entries in the DEBUG Settings gallery and attaches 80 PNGs.
+/// SLOW visual audit: opens all 52 entries in the DEBUG Settings gallery and attaches 104 PNGs.
 /// Run alone with -only-testing:FormCoachUITests/DemoGalleryReviewTests when reviewing artwork.
 final class DemoGalleryReviewTests:XCTestCase {
     func testSlowReviewEveryWrongAndCorrectKeyMoment() throws {
@@ -18,10 +18,12 @@ final class DemoGalleryReviewTests:XCTestCase {
         XCTAssertTrue(search.waitForExistence(timeout:10),app.debugDescription)
         var previousKey=""
         let onlyKey=ProcessInfo.processInfo.environment["FORMCOACH_GALLERY_REVIEW_KEY"]
+        let reviewKeys=ProcessInfo.processInfo.environment["FORMCOACH_GALLERY_REVIEW_KEYS"].map { Set($0.split(separator: ",").map(String.init)) }
         var reviewed=0
         for sport in ["basketball","golf","pickleball","tennis"] {
-            let keys=["setup."+sport]+entries.filter { $0["sport"] as? String == sport }.compactMap { $0["key"] as? String }.sorted()
-            for key in keys where onlyKey == nil || onlyKey == key {
+            let setups = sport == "tennis" ? ["setup.tennis.front","setup.tennis.back","setup.tennis.side"] : ["setup."+sport]
+            let keys=setups+entries.filter { $0["sport"] as? String == sport }.compactMap { $0["key"] as? String }.sorted()
+            for key in keys where (onlyKey == nil || onlyKey == key) && (reviewKeys == nil || reviewKeys!.contains(key)) {
                 search.tap()
                 if !previousKey.isEmpty {
                     let clear=search.buttons["Clear text"]
@@ -34,8 +36,13 @@ final class DemoGalleryReviewTests:XCTestCase {
                 XCTAssertTrue(app.buttons["hologram.close"].waitForExistence(timeout:10),key)
                 app.buttons["hologram.keyMoment"].tap()
                 for mode in ["Wrong","Correct"] {
-                    app.buttons[mode].tap()
-                    usleep(350_000)
+                    let modeButton = app.segmentedControls.buttons[mode]
+                    for _ in 0..<3 where !modeButton.isSelected {
+                        modeButton.tap()
+                        usleep(500_000)
+                    }
+                    XCTAssertTrue(modeButton.isSelected, key + " " + mode)
+                    usleep(500_000)
                     let attachment=XCTAttachment(screenshot:app.screenshot())
                     attachment.name=key+"-"+mode.lowercased()+".png"; attachment.lifetime = .keepAlways
                     add(attachment)
@@ -46,11 +53,28 @@ final class DemoGalleryReviewTests:XCTestCase {
                 reviewed += 1
             }
         }
-        XCTAssertEqual(reviewed,onlyKey == nil ? 40 : 1)
+        XCTAssertEqual(reviewed,onlyKey == nil ? (reviewKeys?.count ?? 52) : 1)
     }
 }
 
 final class DemoAnatomyTests:XCTestCase {
+    func testNewTennisCuesKeepAdultLimbLengths() {
+        let parameters = Set(["finishHeight","finishElbowLift","offReach","contactSpacing","contactFront","extensionThrough","backLoad","weightTransfer"])
+        for (key,spec) in DemoMotionTable.entries where !parameters.isDisjoint(with: spec.wrong.keys) || key.contains("@side") {
+            for values in [spec.wrong,spec.correct] {
+                let motion=DemoMotion(base:spec.base,parameters:values)
+                for time in stride(from:Float(0),through:motion.duration,by:0.04) {
+                    let skeleton=DemoSkeleton(p:motion.sample(time),base:spec.base)
+                    for side in ["l","r"] {
+                        for (a,b,length) in [("_shoulder","_elbow",Float(0.342)),("_elbow","_wrist",Float(0.27)),("_hip","_knee",Float(0.45)),("_knee","_ankle",Float(0.45))] {
+                            XCTAssertEqual(simd_distance(skeleton.points[side+a]!,skeleton.points[side+b]!),length,accuracy:0.001,key)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     func testOverheadArmIsFullyExtendedAtContact() {
         for base in [BaseMotion.tennisServe,.pickleballOverhead] {
             let pose=DemoMotion(base:base,parameters:[:]).frames[2]

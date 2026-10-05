@@ -58,7 +58,7 @@ struct HomeView: View {
             .refreshable { await state.syncPending(); await state.refreshHome() }
             .fullScreenCover(item: $selectedSport) { sport in
                 if let profiles = state.profiles, let profile = profiles.sports[sport.rawValue], let user = state.user {
-                    SessionFlow(profiles: profiles, sport: sport, profile: profile, handedness: user.handedness,
+                    TrainingSessionFlow(profiles: profiles, sport: sport, profile: profile, handedness: user.handedness,
                                 spokenCues: state.spokenCues, sharePose: state.sharePose)
                 }
             }

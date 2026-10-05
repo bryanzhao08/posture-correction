@@ -7,13 +7,14 @@ import SwiftUI
     @State private var query=""
     private let sports=["basketball","golf","pickleball","tennis"]
     private func entries(_ sport:String) -> [DemoCue] {
-        let setup=DemoCatalog.entry(state.profiles?.sports[sport]?.camera ?? "",sport:sport,setup:true)!
-        return ([setup]+DemoCatalog.cues.filter { $0.sport == sport }.sorted { $0.key < $1.key })
+        let profile=state.profiles?.sports[sport]
+        let setups = sport == "tennis" ? ["front","back","side"].map { DemoCatalog.entry(profile?.camera(for: $0) ?? "", sport:sport,setup:true)! } : [DemoCatalog.entry(profile?.camera ?? "",sport:sport,setup:true)!]
+        return (setups+DemoCatalog.cues.filter { $0.sport == sport }.sorted { $0.key < $1.key })
             .filter { query.isEmpty || $0.key.localizedCaseInsensitiveContains(query) || $0.meaning.localizedCaseInsensitiveContains(query) }
     }
     var body: some View {
         List {
-            Section { Text("Review all 40 demonstrations. Key moment pauses the movement at the cue's comparison phase; Replay returns to synchronized motion.").font(.subheadline) }
+            Section { Text("Review all 52 demonstrations. Key moment pauses the movement at the cue's comparison phase; Replay returns to synchronized motion.").font(.subheadline) }
             ForEach(sports.filter { !entries($0).isEmpty },id:\.self) { sport in
                 Section(sport.capitalized) {
                     ForEach(entries(sport)) { cue in

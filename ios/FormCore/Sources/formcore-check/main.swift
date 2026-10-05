@@ -42,7 +42,7 @@ for fx in fixtures {
     let rec = fx["recording"] as! [String: Any]
     let exp = fx["expected"] as! [String: Any]
     let hand: Handedness = (rec["handedness"] as? String) == "left" ? .left : .right
-    let engine = FormEngine(profiles: profiles, sport: rec["sport"] as! String, handedness: hand)
+    let engine = FormEngine(profiles: profiles, sport: rec["sport"] as! String, handedness: hand, view: rec["view"] as? String, focus: rec["focus"] as? String)
     let aspect = rec["aspect"] as? Double ?? 1.0
     for fr in rec["frames"] as! [[String: Any]] {
         let joints: [JointObservation?] = (fr["j"] as! [[Double]]).map {
