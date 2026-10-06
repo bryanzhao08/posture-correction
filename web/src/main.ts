@@ -7,6 +7,7 @@ import { CameraSession, SampleSession, drawSkeleton, type SessionOptions } from 
 import { clearSessions, deleteSession, listSessions, pref, saveSession, setPref, storageIsPersistent,
          type StoredSession } from "./app/store.ts";
 import { loadPose } from "./app/pose.ts";
+import { buildCard, drawCard, shortLabel, type FixCard } from "./app/fixcard.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const profiles: any = profilesJson;
@@ -138,7 +139,8 @@ function preSession() {
       <button class="btn primary big" id="start">Start session</button>
       <div class="row gap">
         <label class="small"><input type="checkbox" id="rear" ${pref("rearCamera", false) ? "checked" : ""}> Use the back camera</label>
-        <label class="small"><input type="checkbox" id="speak" ${pref("speak", true) ? "checked" : ""}> Speak cues</label>
+        <label class="small"><input type="checkbox" id="speak" ${pref("speak", true) ? "checked" : ""}> Say a short tip after each rep</label>
+        <label class="small"><input type="checkbox" id="nice" ${pref("sayNice", false) ? "checked" : ""}> Say "nice" on good reps</label>
       </div>
       <button class="btn ghost" id="sample">No camera handy? Try a sample recording</button>
     </div>
@@ -153,17 +155,22 @@ function preSession() {
   app.querySelectorAll<HTMLButtonElement>("[data-stroke]").forEach((b) => b.onclick = () => { setup.stroke = b.dataset.stroke as Setup["stroke"]; preSession(); });
   app.querySelector<HTMLInputElement>("#rear")!.onchange = (e) => setPref("rearCamera", (e.target as HTMLInputElement).checked);
   app.querySelector<HTMLInputElement>("#speak")!.onchange = (e) => setPref("speak", (e.target as HTMLInputElement).checked);
+  app.querySelector<HTMLInputElement>("#nice")!.onchange = (e) => setPref("sayNice", (e.target as HTMLInputElement).checked);
   app.querySelector<HTMLButtonElement>("#start")!.onclick = () => go(() => live("camera"));
   app.querySelector<HTMLButtonElement>("#sample")!.onclick = () => go(() => live("sample"));
 }
 
 // ---------------------------------------------------------------- live
-type BoardMode = "full" | "mini" | "hidden";
+// Quiet by default (docs/QUIET_COACHING.md): no text pops up when a rep ends. A small scoreboard, an
+// optional short spoken cue, and a "last rep" card that stays until the next rep.
+type BoardMode = "compact" | "mini" | "hidden";
+const NEXT_BOARD: Record<BoardMode, BoardMode> = { compact: "mini", mini: "hidden", hidden: "compact" };
 
 async function live(source: "camera" | "sample") {
   const opts: SessionOptions = { sport: setup.sport, handedness: pref("handedness", "right"), view: setup.view, focus: focusFor(setup) };
   const mirrored = source === "camera" && !pref("rearCamera", false);
-  let board: BoardMode = pref<BoardMode>("scoreboard", "full");
+  const stored = pref<string>("scoreboard", "compact");
+  let board: BoardMode = stored === "mini" || stored === "hidden" ? stored : "compact";
   app.innerHTML = `
   <main class="live">
     <div class="stage"><div class="frame ${mirrored ? "mirror" : ""}" id="frame">
@@ -173,24 +180,27 @@ async function live(source: "camera" | "sample") {
     <div class="hud">
       <div class="top row between">
         <span class="pill" id="state">Starting…</span>
-        ${source === "sample" ? `<span class="pill dim">Sample recording</span>` : ""}
+        <div class="row gap">
+          <div class="board" id="board">
+            <div class="col"><div class="lbl">REPS</div><div class="num" id="reps">0</div></div>
+            <div class="divider"></div>
+            <div class="col"><div class="lbl">SCORE</div><div class="num" id="score">—</div></div>
+          </div>
+          <button class="pill mini" id="mini-pill" hidden aria-label="Hide scoreboard"></button>
+          <button class="icon-btn" id="board-btn" aria-label="Minimize scoreboard">–</button>
+        </div>
       </div>
       <div id="setup-check" class="center-msg" hidden></div>
-      <div class="board" id="board">
-        <div class="score-row">
-          <div class="col"><div class="lbl">REPS</div><div class="num" id="reps">0</div></div>
-          <div class="divider"></div>
-          <div class="col"><div class="lbl">SCORE</div><div class="num" id="score">—</div></div>
-          <button class="icon-btn" id="mini" aria-label="Minimize scoreboard">▾</button>
+      <div class="bottom">
+        <button class="fixcard" id="card" hidden aria-label="Last rep: open the fix">
+          <canvas id="card-canvas" width="300" height="400"></canvas>
+          <span class="fix-label" id="card-label"></span>
+          <span class="fix-score" id="card-score"></span>
+        </button>
+        <div class="row between controls">
+          <span class="muted small" id="note">${source === "sample" ? "Playing a sample recording" : ""}</span>
+          <button class="btn danger" id="end">End session</button>
         </div>
-        <div class="cue" id="cue"></div>
-      </div>
-      <button class="pill mini" id="mini-pill" hidden aria-label="Show scoreboard"></button>
-      <button class="icon-btn float" id="show" hidden aria-label="Show scoreboard">▴</button>
-      <div class="toast" id="toast" hidden></div>
-      <div class="bottom row between">
-        <button class="btn ghost" id="hide">Hide numbers</button>
-        <button class="btn danger" id="end">End session</button>
       </div>
     </div>
     <dialog id="explain"></dialog>
@@ -200,21 +210,21 @@ async function live(source: "camera" | "sample") {
   const ctx = canvas.getContext("2d")!;
   const frame = $<HTMLDivElement>("frame");
   const dom = opts.handedness === "right" ? "r" : "l";
-  let lastCue: string | null = null;
-  let toastTimer = 0;
-  let cueTimer = 0;
+  const cards: FixCard[] = [];
+  let lastSpoken = -1e9;
+  let noteTimer = 0;
+  let aspectNow = 1;
 
   const applyBoard = () => {
-    $("board").hidden = board !== "full";
+    $("board").hidden = board !== "compact";
     $("mini-pill").hidden = board !== "mini";
-    $("show").hidden = board !== "hidden";
-    $("hide").textContent = board === "hidden" ? "Show numbers" : "Hide numbers";
+    const btn = $("board-btn");
+    btn.textContent = board === "hidden" ? "＋" : "–";
+    btn.setAttribute("aria-label", board === "compact" ? "Minimize scoreboard" : board === "mini" ? "Hide scoreboard" : "Show scoreboard");
     setPref("scoreboard", board);
   };
-  $("mini").onclick = () => { board = "mini"; applyBoard(); };
-  $("mini-pill").onclick = () => { board = "full"; applyBoard(); };
-  $("show").onclick = () => { board = "full"; applyBoard(); };
-  $("hide").onclick = () => { board = board === "hidden" ? "full" : "hidden"; applyBoard(); };
+  $("board-btn").onclick = () => { board = NEXT_BOARD[board]; applyBoard(); };
+  $("mini-pill").onclick = () => { board = "hidden"; applyBoard(); };
   applyBoard();
 
   const sizeCanvas = (aspect: number) => {
@@ -225,68 +235,72 @@ async function live(source: "camera" | "sample") {
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
   };
 
-  const toast = (msg: string) => {
-    const t = $("toast");
-    t.textContent = msg;
-    t.hidden = false;
-    clearTimeout(toastTimer);
-    toastTimer = window.setTimeout(() => (t.hidden = true), 2500);
+  // quiet status line for ignored motions: small, bottom, fades
+  const note = (msg: string) => {
+    const n = $("note");
+    n.textContent = msg;
+    clearTimeout(noteTimer);
+    noteTimer = window.setTimeout(() => (n.textContent = ""), 3000);
   };
 
-  const showCue = (cue: string | null) => {
-    const el = $("cue");
-    lastCue = cue;
-    el.innerHTML = cue
-      ? `<p>${esc(cue)}</p>${cueInfo(opts.sport, cue) ? `<button class="btn link small" id="what">What does this mean?</button>` : ""}`
-      : `<p class="good">Nice one — no fixes needed on that rep.</p>`;
-    const w = document.getElementById("what");
-    if (w) w.onclick = () => explain(cue!);
-    if (board !== "full" && cue) {
-      toast(cue);
-      clearTimeout(cueTimer);
-    }
+  const showCard = (card: FixCard) => {
+    const el = $("card");
+    el.hidden = false;
+    const c = $<HTMLCanvasElement>("card-canvas");
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = el.clientWidth || 120;
+    c.width = Math.round(w * dpr);
+    c.height = Math.round(w * 1.25 * dpr);
+    drawCard(c, card);
+    $("card-label").textContent = card.short ?? "";
+    $("card-score").textContent = `Rep ${card.repIndex + 1} · ${fmt(card.score)}`;
+    el.onclick = () => openCard(card);
   };
 
-  const explain = (cue: string) => {
-    const info = cueInfo(opts.sport, cue);
-    const d = $<HTMLDialogElement>("explain");
-    if (!info) return;
-    d.innerHTML = `<h3>${esc(cue)}</h3><p>${esc(info.meaning)}</p>
-      <p><strong class="bad">What you're doing:</strong> ${esc(info.wrong_motion)}</p>
-      <p><strong class="good">What it should look like:</strong> ${esc(info.correct_motion)}</p>
-      <button class="btn primary" id="close-explain">Got it</button>`;
-    d.showModal();
-    document.getElementById("close-explain")!.onclick = () => d.close();
+  const openCard = (card: FixCard) => openFix($<HTMLDialogElement>("explain"), opts.sport, card);
+
+  const speak = (text: string) => {
+    if (!pref("speak", true) || !("speechSynthesis" in window)) return;
+    const now = performance.now();
+    if (now - lastSpoken < 6000) return;
+    lastSpoken = now;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(new SpeechSynthesisUtterance(text));
   };
 
   const onEvent = (ev: EngineEvent) => {
     if (ev.kind === "rep" && ev.rep) {
-      const n = session.engine.reps.length;
+      const eng = session.engine;
+      const n = eng.reps.length;
       $("reps").textContent = String(n);
       $("score").textContent = fmt(ev.rep.score);
-      $("mini-pill").textContent = `${n} reps · ${fmt(ev.rep.score)}`;
-      showCue(ev.rep.cues[0] ?? null);
+      $("mini-pill").textContent = `${n} · ${fmt(ev.rep.score)}`;
       navigator.vibrate?.(40);
-      if (pref("speak", true) && ev.rep.cues[0] && "speechSynthesis" in window) {
-        speechSynthesis.cancel();
-        speechSynthesis.speak(new SpeechSynthesisUtterance(ev.rep.cues[0]));
+      const frames = session instanceof CameraSession ? session.frames : [];
+      const card = buildCard(eng, ev.rep, n - 1, frames, aspectNow, mirrored);
+      if (card) {
+        cards.push(card);
+        showCard(card);
+        speak(card.short ?? card.cue ?? "");
+      } else {
+        $("card").hidden = true;
+        if (pref("sayNice", false)) speak("Nice");
       }
     } else if (ev.kind === "rejected" && ["bad_pattern", "too_slow", "too_small", "one_way", "bad_start", "not_high_enough"].includes(ev.reason)) {
-      toast(`Not counted: ${REJECT_LABEL[ev.reason] ?? ev.reason}`);
+      note(`Not counted: ${REJECT_LABEL[ev.reason] ?? ev.reason}`);
     }
   };
 
   const hooks = {
     onFrame: (joints: Joint[] | null, aspect: number) => {
+      aspectNow = aspect;
       sizeCanvas(aspect);
       if (source === "sample") {
         ctx.fillStyle = "#0d1117";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        const c2 = ctx;
-        const off = document.createElement("canvas");
-        off.width = canvas.width; off.height = canvas.height;
-        drawSkeleton(off.getContext("2d")!, joints, canvas.width, canvas.height, dom);
-        c2.drawImage(off, 0, 0);
+        ctx.save();
+        drawSkeleton(ctx, joints, canvas.width, canvas.height, dom);
+        ctx.restore();
       } else {
         drawSkeleton(ctx, joints, canvas.width, canvas.height, dom);
       }
@@ -329,6 +343,8 @@ async function live(source: "camera" | "sample") {
         msg.hidden = true;
         (session as CameraSession).beginCounting();
         hooks.onState(session.engine.state);
+        speak("Go");
+        lastSpoken = -1e9;
         return;
       }
       msg.innerHTML = `<p class="count">${n}</p>`;
@@ -347,12 +363,12 @@ async function live(source: "camera" | "sample") {
     session.stop();
     speechSynthesis?.cancel?.();
     const summary = summarize(opts.sport, eng.reps, eng.rejected, eng.profile.metrics, profiles.scoring, eng.activeS, eng.passiveS);
-    const stored: StoredSession = {
+    const rec: StoredSession = {
       id: crypto.randomUUID?.() ?? String(Date.now()), sport: opts.sport, view: opts.view, focus: opts.focus,
       training: setup.training, handedness: opts.handedness, source, started_at: new Date().toISOString(),
       duration_s: duration, summary, reps: eng.reps,
     };
-    go(() => summaryScreen(stored, source === "camera" && eng.reps.length > 0));
+    go(() => summaryScreen(rec, source === "camera" && eng.reps.length > 0, cards));
   };
   $("end").onclick = finish;
 
@@ -381,7 +397,20 @@ async function live(source: "camera" | "sample") {
   const onVis = () => { if (document.hidden && source === "camera") finish(); };
   document.addEventListener("visibilitychange", onVis);
   teardown = () => { document.removeEventListener("visibilitychange", onVis); session.stop(); };
-  void lastCue;
+}
+
+/** The big view of a rep's fix: freeze-frame, full cue and the plain explanation. */
+function openFix(d: HTMLDialogElement, sport: string, card: FixCard) {
+  const info = card.cue ? cueInfo(sport, card.cue) : undefined;
+  d.innerHTML = `<canvas class="fix-big" width="600" height="750"></canvas>
+    <p class="legend"><span class="sw white"></span> You <span class="sw cyan"></span> The fix ${card.ghost ? "" : "<span class='muted small'>(this one is about timing or rotation, so there's no pose to draw)</span>"}</p>
+    <h3>${esc(card.short ?? "")}</h3>
+    ${card.cue ? `<p>${esc(card.cue)}</p>` : ""}
+    ${info ? `<p class="muted">${esc(info.meaning)}</p><p><strong class="good">Aim for:</strong> ${esc(info.correct_motion)}</p>` : ""}
+    <button class="btn primary" id="close-explain">Got it</button>`;
+  d.showModal();
+  drawCard(d.querySelector("canvas")!, card);
+  document.getElementById("close-explain")!.onclick = () => d.close();
 }
 
 // ---------------------------------------------------------------- summary
@@ -400,7 +429,8 @@ function metricRows(s: StoredSession) {
     }).join("");
 }
 
-async function summaryScreen(s: StoredSession, save: boolean) {
+async function summaryScreen(s: StoredSession, save: boolean, cards: FixCard[] = []) {
+  const prof = sportProfile(s.sport, s.view);
   const previous = (await listSessions()).filter((x) => x.sport === s.sport && x.summary.score != null);
   if (save) await saveSession(s);
   const prevScores = previous.slice(0, 5).map((x) => x.summary.score!);
@@ -432,11 +462,17 @@ async function summaryScreen(s: StoredSession, save: boolean) {
       <div class="scroll"><table><thead><tr><th>Metric</th><th>You</th><th>Pro</th><th>Score</th></tr></thead>
       <tbody>${metricRows(s)}</tbody></table></div>
       <p class="muted small">Distances are measured in your own torso lengths (shoulders to hips), so they work at any height or camera distance.</p></section>` : ""}
-    ${s.reps.length ? `<section class="card"><h3>Reps</h3><ol class="reps">${s.reps.map((r: Rep) =>
-      `<li><span class="rs">${fmt(r.score)}</span> <span class="muted">${esc(r.type)}</span> ${r.cues[0] ? `· ${esc(r.cues[0])}` : ""}</li>`).join("")}</ol></section>` : ""}
+    ${s.reps.length ? `<section class="card"><h3>Reps</h3><ol class="reps">${s.reps.map((r: Rep, i: number) =>
+      `<li><span class="rs">${fmt(r.score)}</span> <span class="muted">${esc(r.type)}</span> ${r.cues[0] ? `· ${esc(shortLabel(prof, r.cues[0]))}` : ""}
+        ${cards.some((c) => c.repIndex === i) ? `<button class="btn link small" data-card="${i}">See the fix</button>` : ""}</li>`).join("")}</ol></section>` : ""}
+    <dialog id="explain"></dialog>
     ${Object.keys(s.summary.rejected).length ? `<p class="muted small">Ignored motions: ${Object.entries(s.summary.rejected).map(([k, v]) => `${v} × ${REJECT_LABEL[k] ?? k}`).join("; ")}.</p>` : ""}
     <div class="row gap"><button class="btn primary" id="again">Go again</button><button class="btn ghost" id="history">History</button><button class="btn link" id="home">Home</button></div>
   </main>`;
+  app.querySelectorAll<HTMLButtonElement>("[data-card]").forEach((b) => b.onclick = () => {
+    const card = cards.find((c) => c.repIndex === Number(b.dataset.card));
+    if (card) openFix(document.getElementById("explain") as HTMLDialogElement, s.sport, card);
+  });
   document.getElementById("again")!.onclick = () => go(preSession);
   document.getElementById("history")!.onclick = () => go(history);
   document.getElementById("home")!.onclick = () => go(home);

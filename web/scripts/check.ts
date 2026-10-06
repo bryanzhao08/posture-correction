@@ -3,12 +3,37 @@
 import { readFileSync } from "node:fs";
 import { analyzeRecording } from "../src/engine/engine.ts";
 import { summarize } from "../src/engine/scoring.ts";
+import { correctedPose } from "../src/engine/corrections.ts";
+
+if (process.argv[2] === "--corrections") checkCorrections(process.argv[3]);
+
+// node scripts/check.ts --corrections <file>: each {analyzer, metric, target, pose, ref, torso, dom, expected}
+function checkCorrections(path: string): never {
+  const cases = JSON.parse(readFileSync(path, "utf8"));
+  let bad = 0;
+  for (const c of cases) {
+    const got = correctedPose(c.analyzer, c.metric, c.target, c.pose, c.ref, c.torso, c.dom);
+    const exp = c.expected;
+    let ok = (got === null) === (exp === null);
+    if (ok && got && exp) {
+      for (const k of new Set([...Object.keys(got), ...Object.keys(exp)])) {
+        if (!got[k] || !exp[k] || !close(got[k][0], exp[k][0]) || !close(got[k][1], exp[k][1])) ok = false;
+      }
+    }
+    if (!ok) {
+      bad++;
+      if (bad <= 8) console.log(`FAIL ${c.analyzer}.${c.metric} target ${c.target}: web ${JSON.stringify(got)} vs python ${JSON.stringify(exp)}`);
+    }
+  }
+  console.log(`${cases.length - bad}/${cases.length} corrections match`);
+  process.exit(bad ? 1 : 0);
+}
 
 const [fxPath, profPath] = process.argv.slice(2);
 const fixtures = JSON.parse(readFileSync(fxPath, "utf8"));
 const profiles = JSON.parse(readFileSync(profPath, "utf8"));
 
-const close = (a: number, b: number) => Math.abs(a - b) <= 1e-6 * Math.max(1.0, Math.abs(a), Math.abs(b));
+function close(a: number, b: number) { return Math.abs(a - b) <= 1e-6 * Math.max(1.0, Math.abs(a), Math.abs(b)); }
 const sameNum = (a: number | null | undefined, b: number | null | undefined) =>
   a == null || b == null ? a == null && b == null : close(a, b);
 

@@ -1,6 +1,7 @@
 // A live practice session: frames from the camera (or a sample recording) -> engine -> HUD callbacks.
 import { Engine, type EngineEvent, type Joint, type Profiles, type Recording } from "../engine/engine.ts";
 import { detect, loadPose } from "./pose.ts";
+import type { Frame } from "./fixcard.ts";
 
 export interface SessionOptions {
   sport: string;
@@ -73,6 +74,9 @@ export class CameraSession extends BaseSession {
   private counting = false;
   private raf = 0;
   private lastVideoT = -1;
+  /** The last few seconds of camera frames (small, memory only) for the last-rep card. */
+  frames: Frame[] = [];
+  private lastCapture = -1;
 
   async start(video: HTMLVideoElement, facingMode: "user" | "environment") {
     const pose = loadPose();
@@ -101,9 +105,24 @@ export class CameraSession extends BaseSession {
       }
       const aspect = video.videoWidth / Math.max(1, video.videoHeight);
       this.hooks.onFrame(joints, aspect);
-      if (this.counting) this.feed((now - this.t0) / 1000, joints, aspect);
+      if (this.counting) {
+        const t = (now - this.t0) / 1000;
+        if (t - this.lastCapture >= 0.12) this.capture(video, t);
+        this.feed(t, joints, aspect);
+      }
     };
     loop();
+  }
+
+  private capture(video: HTMLVideoElement, t: number) {
+    this.lastCapture = t;
+    const h = 240, w = Math.round((h * video.videoWidth) / Math.max(1, video.videoHeight));
+    const old = this.frames.length >= 30 && t - this.frames[0].t > 3.5 ? this.frames.shift()! : null;
+    const c = (old?.image as HTMLCanvasElement | undefined) ?? document.createElement("canvas");
+    c.width = w; c.height = h;
+    c.getContext("2d")!.drawImage(video, 0, 0, w, h);
+    this.frames.push({ t, image: c, w, h });
+    while (this.frames.length && t - this.frames[0].t > 3.5) this.frames.shift();
   }
 
   beginCounting() {

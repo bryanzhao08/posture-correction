@@ -84,22 +84,31 @@ footer { margin-top: 32px; line-height: 1.5; }
 .pill.dim { color: var(--muted); font-weight: 500; }
 .pill[data-state="ready"] { border-color: var(--good); color: var(--good); }
 .pill[data-state="active"] { border-color: var(--accent-2); color: var(--accent-2); }
-.pill.mini { align-self: center; margin-top: 10px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.pill.mini { cursor: pointer; font-variant-numeric: tabular-nums; }
 .center-msg { align-self: center; margin-top: 22vh; text-align: center; background: rgba(13, 17, 23, 0.8); border-radius: 16px; padding: 14px 20px; max-width: 90%; }
 .center-msg p { margin: 0 0 4px; font-size: 1.15rem; font-weight: 600; }
 .center-msg .count { font-size: 4.5rem; font-weight: 800; margin: 0; }
-.board { margin-top: auto; margin-bottom: 14px; background: rgba(13, 17, 23, 0.72); border: 1px solid var(--line); border-radius: 22px; padding: 12px 14px; backdrop-filter: blur(10px); }
-.score-row { display: flex; align-items: stretch; position: relative; }
-.score-row .col { flex: 1; text-align: center; }
-.score-row .divider { width: 1px; background: var(--line); margin: 6px 0; }
-.lbl { color: var(--muted); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.12em; }
-.num { font-size: clamp(3.2rem, 15vw, 6rem); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; font-family: ui-rounded, "SF Pro Rounded", inherit; }
-.icon-btn { position: absolute; top: -4px; right: -4px; width: 44px; height: 44px; border-radius: 50%; border: none; background: transparent; color: var(--muted); font-size: 1.3rem; cursor: pointer; }
-.icon-btn.float { position: static; align-self: flex-end; margin-top: auto; margin-bottom: 12px; background: rgba(13, 17, 23, 0.78); border: 1px solid var(--line); }
-.cue { text-align: center; margin-top: 6px; }
-.cue p { margin: 4px 0; font-weight: 600; line-height: 1.35; }
-.toast { position: absolute; left: 16px; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 64px); text-align: center; background: rgba(31, 38, 48, 0.92); border-radius: 12px; padding: 10px 12px; font-weight: 600; }
-.bottom { pointer-events: auto; }
+.board { display: flex; align-items: stretch; gap: 10px; background: rgba(13, 17, 23, 0.72); border: 1px solid var(--line); border-radius: 14px; padding: 6px 12px; backdrop-filter: blur(10px); }
+.board .col { text-align: center; min-width: 3.2ch; }
+.board .divider { width: 1px; background: var(--line); }
+.lbl { color: var(--muted); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.12em; }
+.num { font-size: clamp(1.8rem, 8vw, 2.6rem); font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; font-family: ui-rounded, "SF Pro Rounded", inherit; }
+.icon-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: rgba(13, 17, 23, 0.72); color: var(--text); font-size: 1.2rem; cursor: pointer; flex: none; }
+.hud .top .row { pointer-events: auto; align-items: center; }
+.bottom { margin-top: auto; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+.bottom > * { pointer-events: auto; }
+.controls { gap: 12px; }
+.controls .muted { flex: 1; min-height: 1.2em; text-shadow: 0 1px 3px #000; }
+.fixcard { align-self: flex-start; width: min(30vw, 190px); padding: 0; border-radius: 14px; overflow: hidden; border: 2px solid rgba(0, 229, 255, 0.7); background: var(--panel); color: var(--text); cursor: pointer; display: flex; flex-direction: column; font: inherit; text-align: left; box-shadow: 0 6px 20px rgba(0,0,0,0.5); }
+.fixcard canvas { width: 100%; aspect-ratio: 4 / 5; display: block; }
+.fix-label { font-weight: 800; font-size: 0.95rem; line-height: 1.2; padding: 6px 8px 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.fix-score { color: var(--muted); font-size: 0.75rem; padding: 2px 8px 7px; }
+.fix-big { width: 100%; aspect-ratio: 4 / 5; border-radius: 12px; display: block; }
+.legend { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 0.9rem; }
+.sw { display: inline-block; width: 14px; height: 4px; border-radius: 2px; }
+.sw.white { background: #fff; }
+.sw.cyan { background: #00e5ff; margin-left: 8px; }
+
 dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 18px; max-width: min(92vw, 460px); line-height: 1.45; }
 dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 
