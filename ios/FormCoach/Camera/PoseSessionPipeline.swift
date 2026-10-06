@@ -21,12 +21,14 @@ struct SessionCapture {
     let reps: [Rep]
     let recording: Recording?
     let cards: [RepCard]
+    var replays: [CapturedReplay] = []
 }
 
 // All callers own this object on their source's serial queue. Counting/scoring stay in FormCore.
 final class PoseSessionPipeline {
     private let engine: FormEngine
     private let feedback = FeedbackBuffer()
+    let replayRecorder: ReplayRecorder?
     private let profile: SportProfile
     private var cards: [RepCard] = []
     private var latestCard: RepCard?
@@ -46,6 +48,7 @@ final class PoseSessionPipeline {
     var engineState: EngineState { engine.state }
 
     init(profiles: Profiles, sport: String, handedness: Handedness, collectPose: Bool, view: String? = nil, focus: String? = nil) {
+        replayRecorder = UserDefaults.standard.bool(forKey:"saveReplays") ? ReplayRecorder() : nil
         self.profile = profiles.sports[sport]!.effective(for: view ?? profiles.sports[sport]!.defaultView)
         self.view = view; self.focus = focus
         self.sport = sport
@@ -54,10 +57,11 @@ final class PoseSessionPipeline {
         self.collectPose = collectPose
         engine = FormEngine(profiles: profiles, sport: sport, handedness: handedness, view: view, focus: focus)
     }
-    func resetSetup() { setupSince = nil; countingStarted = false; feedback.clear() }
+    func resetSetup() { setupSince = nil; countingStarted = false; feedback.clear(); replayRecorder?.reset() }
     func processFrame(t: Double, joints: [JointObservation?], aspect: Double, mirrored: Bool, markers: [MarkerPoint] = [], imageBuffer: CVPixelBuffer? = nil) -> CameraFrameState {
         self.aspect = aspect
         feedback.append(t:t,joints:joints,names:jointNames,aspect:aspect,mirrored:mirrored,buffer:imageBuffer)
+        replayRecorder?.append(t:t,joints:joints,names:jointNames,aspect:aspect,mirrored:mirrored,buffer:imageBuffer)
         let setup = setupMessage(joints)
         var countdown: Int?
         if !countingStarted {
@@ -84,7 +88,7 @@ final class PoseSessionPipeline {
                 if case .rep(let rep) = event {
                     lastRep = rep; counted.append(rep)
                     latestCard = feedback.card(rep:rep,index:engine.reps.count,sport:sport,profile:profile,dominant:handedness == .right ? "r" : "l")
-                    if let card=latestCard { cards.append(card) }
+                    if let card=latestCard { cards.append(card); replayRecorder?.add(card) }
                 }
             }
         }
@@ -115,5 +119,5 @@ final class PoseSessionPipeline {
         frames.removeAll()
         return snapshot
     }
-    func discardRecording() { frames.removeAll(); feedback.clear(); cards.removeAll(); latestCard=nil }
+    func discardRecording() { replayRecorder?.discard(); frames.removeAll(); feedback.clear(); cards.removeAll(); latestCard=nil }
 }

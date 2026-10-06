@@ -12,6 +12,7 @@ struct LocalSummaryView: View {
                     duration: local.payload.durationS, summary: local.payload.summary, reps: local.payload.reps,
                     comparison: local.server?.comparison, checkpoint: local.server?.checkpoint, cards: state.repCards[sessionID] ?? []) {
                     Section("Saved on this iPhone") {
+                        if let clips=local.replays,!clips.isEmpty { Label("Saved replays: \(clips.count)",systemImage:"film").accessibilityIdentifier("replay.saved.count") }
                         if local.server == nil {
                             Label(state.isSyncing ? "Uploading…" : "Upload queued", systemImage: "icloud.and.arrow.up")
                             Text("Your session is safe locally. Comparisons appear after syncing.")

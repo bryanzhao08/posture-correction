@@ -28,6 +28,41 @@ final class SessionStore {
         guard UUID(uuidString: session.id) != nil else { throw APIError(message: "Invalid session identifier.") }
         try write(session, to: sessionsURL.appendingPathComponent(session.id).appendingPathExtension("json"))
     }
+    func importReplays(_ clips:[CapturedReplay],sessionID:String) throws -> [LocalReplay] {
+        guard UUID(uuidString:sessionID) != nil else { throw APIError(message:"Invalid session identifier.") }
+        guard !clips.isEmpty else { return [] }
+        let folder=sessionsURL.appendingPathComponent(sessionID,isDirectory:true)
+        try FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
+        var result:[LocalReplay]=[]
+        do {
+            for clip in clips {
+                let filename="rep-\(clip.index).mp4",target=folder.appendingPathComponent(filename)
+                if FileManager.default.fileExists(atPath:target.path) { try FileManager.default.removeItem(at:target) }
+                try FileManager.default.copyItem(at:clip.url,to:target)
+                try FileManager.default.setAttributes([.protectionKey:FileProtectionType.completeUntilFirstUserAuthentication],ofItemAtPath:target.path)
+                result.append(LocalReplay(index:clip.index,cue:clip.cue,shortLabel:clip.shortLabel,mirrored:clip.mirrored,filename:filename,thumbnail:clip.thumbnail))
+            }
+            return result
+        } catch { try? FileManager.default.removeItem(at:folder); throw error }
+    }
+    func replayURL(sessionID:String,replay:LocalReplay) -> URL? {
+        guard UUID(uuidString:sessionID) != nil,replay.filename == "rep-\(replay.index).mp4" else { return nil }
+        let url=sessionsURL.appendingPathComponent(sessionID).appendingPathComponent(replay.filename)
+        return FileManager.default.fileExists(atPath:url.path) ? url : nil
+    }
+    func deleteSession(_ id:String) throws {
+        guard UUID(uuidString:id) != nil else { return }
+        for url in [sessionsURL.appendingPathComponent(id),sessionsURL.appendingPathComponent(id).appendingPathExtension("json")] where FileManager.default.fileExists(atPath:url.path) { try FileManager.default.removeItem(at:url) }
+    }
+    func deleteReplays() throws {
+        for var session in try loadSessions() {
+            let folder=sessionsURL.appendingPathComponent(session.id)
+            if FileManager.default.fileExists(atPath:folder.path) { try FileManager.default.removeItem(at:folder) }
+            session.replays=nil; try save(session)
+        }
+        // Remove orphan clip folders left by an interrupted session save.
+        for url in try FileManager.default.contentsOfDirectory(at:sessionsURL,includingPropertiesForKeys:nil) where UUID(uuidString:url.lastPathComponent) != nil { try FileManager.default.removeItem(at:url) }
+    }
     func loadCache() throws -> AccountCache? {
         let url = root.appendingPathComponent("cache.json")
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }

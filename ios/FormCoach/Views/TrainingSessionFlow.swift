@@ -15,6 +15,9 @@ import FormCore
     @State private var trainingID = ""
     @State private var view = ""
     @State private var started = false
+    @AppStorage("saveReplays") private var saveReplays = false
+    @AppStorage("replayOfferSeen") private var replayOfferSeen = false
+    @State private var offerReplays = false
     private var choices: [TrainingType] { profile.training ?? [] }
     private var selected: TrainingType? { choices.first { $0.id == trainingID } ?? choices.first }
     var body: some View {
@@ -47,6 +50,7 @@ import FormCore
                                 .onChange(of:spokenCues) { _, value in try? state.setSpokenCues(value) }
                             Toggle("Say 'nice' on good reps", isOn:$sayNice)
                         }
+                        Section { Toggle("Save replays of reps that need work",isOn:$saveReplays).accessibilityIdentifier("replays.save") } footer: { Text("Stay on this iPhone. Never uploaded.") }
                         if selected == nil {
                             Section("Camera placement") { cameraInstructions }
                         }
@@ -57,7 +61,7 @@ import FormCore
                                     UserDefaults.standard.set(trainingID, forKey: "training." + sport.rawValue)
                                     UserDefaults.standard.set(view, forKey: "trainingView." + sport.rawValue)
                                 }
-                                started = true
+                                if !saveReplays && !replayOfferSeen { offerReplays=true } else { started=true }
                             } label: {
                                 Text("Start session").font(.title2.bold()).frame(maxWidth: .infinity, minHeight: 56)
                             }.buttonStyle(.borderedProminent).accessibilityIdentifier("training.start")
@@ -66,7 +70,11 @@ import FormCore
                         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Back") { dismiss() } } }
                 }.modifier(DemoPresentation())
             }
-        }.onAppear {
+        }.alert("Save short replays of reps that need work?",isPresented:$offerReplays) {
+            Button("Save replays") { saveReplays=true; replayOfferSeen=true; started=true }
+            Button("Not now") { replayOfferSeen=true; started=true }
+        } message: { Text("They stay on this iPhone and are never uploaded.") }
+        .onAppear {
             guard trainingID.isEmpty, let first = choices.first else { return }
             let saved = UserDefaults.standard.string(forKey: "training." + sport.rawValue)
             let choice = choices.first { $0.id == saved } ?? first

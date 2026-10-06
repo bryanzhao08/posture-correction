@@ -63,6 +63,28 @@ final class FormCoachFlowTests: XCTestCase {
 
     }
 
+    private func startPractice() {
+        app.buttons["training.start"].tap()
+        let decline=app.alerts.buttons["Not now"]
+        if decline.waitForExistence(timeout:2) { decline.tap() }
+    }
+
+    func testReplayCaptureStaysLocal() {
+        register()
+        let basketball=app.buttons.containing(NSPredicate(format:"label CONTAINS 'Basketball'")).firstMatch
+        XCTAssertTrue(basketball.waitForExistence(timeout:20)); basketball.tap()
+        let save=app.switches["replays.save"]
+        XCTAssertTrue(save.waitForExistence(timeout:10))
+        for _ in 0..<3 where save.value as? String != "1" { save.coordinate(withNormalizedOffset:CGVector(dx:0.93,dy:0.5)).tap(); usleep(500_000) }
+        XCTAssertEqual(save.value as? String,"1")
+        startPractice()
+        XCTAssertTrue(app.staticTexts["Demo complete · tap End session"].waitForExistence(timeout:80))
+        app.buttons["End session"].tap()
+        XCTAssertTrue(app.navigationBars["Session summary"].waitForExistence(timeout:30))
+        XCTAssertTrue(app.staticTexts["replay.saved.count"].exists || app.otherElements["replay.saved.count"].exists,"At least one local clip was encoded")
+        shot("replay-capture-saved")
+    }
+
     func testRegisterPractiseGolfAndSync() {
         register()
 
@@ -79,7 +101,7 @@ final class FormCoachFlowTests: XCTestCase {
         XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'waiting to sync'")).firstMatch.exists)
         golf.tap()
         XCTAssertTrue(app.buttons["training.start"].waitForExistence(timeout: 10))
-        app.buttons["training.start"].tap()
+        startPractice()
 
         let end = app.buttons["End session"]
         XCTAssertTrue(end.waitForExistence(timeout: 20))
@@ -167,7 +189,7 @@ final class FormCoachFlowTests: XCTestCase {
         app.buttons["From behind"].tap()
         XCTAssertTrue(app.staticTexts["training.camera"].label.contains("From behind"))
         shot("8-tennis-training")
-        app.buttons["training.start"].tap()
+        startPractice()
         XCTAssertTrue(app.buttons["End session"].waitForExistence(timeout: 10))
         app.buttons["End session"].tap()
         XCTAssertTrue(app.navigationBars["Session summary"].waitForExistence(timeout: 20))
@@ -187,7 +209,7 @@ final class FormCoachFlowTests: XCTestCase {
         register()
         let basketball=app.buttons.containing(NSPredicate(format:"label CONTAINS 'Basketball'")).firstMatch
         XCTAssertTrue(basketball.waitForExistence(timeout:20)); basketball.tap()
-        XCTAssertTrue(app.buttons["training.start"].waitForExistence(timeout:10)); app.buttons["training.start"].tap()
+        XCTAssertTrue(app.buttons["training.start"].waitForExistence(timeout:10)); startPractice()
         let card=app.buttons["rep.feedback.card"]
         XCTAssertTrue(card.waitForExistence(timeout:40))
         shot("quiet-basketball-card")

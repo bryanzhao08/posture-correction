@@ -179,6 +179,15 @@ struct PoseFrame: Codable {
     init(t: Double, j: [[Double]], m: [[Double]]? = nil) { self.t = t; self.j = j; self.m = m }
     enum CodingKeys: String, CodingKey { case t, j, m }
 }
+struct LocalReplay: Codable, Identifiable {
+    var id:Int { index }
+    let index:Int
+    let cue:String
+    let shortLabel:String
+    let mirrored:Bool
+    let filename:String
+    let thumbnail:Data
+}
 struct LocalSession: Codable, Identifiable {
     var id: String { payload.clientID }
     let payload: SessionIn
@@ -186,7 +195,8 @@ struct LocalSession: Codable, Identifiable {
     var recording: Recording?
     var poseUploaded: Bool
     var uploadError: String?
-    enum CodingKeys: String, CodingKey { case payload, server, recording, poseUploaded, uploadError }
+    var replays: [LocalReplay]? = nil
+    enum CodingKeys: String, CodingKey { case payload, server, recording, poseUploaded, uploadError, replays }
 }
 struct AccountCache: Codable {
     var user: User

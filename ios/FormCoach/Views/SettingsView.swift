@@ -13,6 +13,7 @@ struct SettingsView: View {
     @State private var spokenCues = true
     @AppStorage("sayNice") private var sayNice = false
     @State private var sharePose = false
+    @AppStorage("saveReplays") private var saveReplays = false
     @State private var confirmDeletion = false
     @State private var busy = false
     @State private var message: String?
@@ -38,6 +39,9 @@ struct SettingsView: View {
                     Toggle("Say 'nice' on good reps", isOn: $sayNice)
                     Toggle("Offer movement demos", isOn: $offerMovementDemos)
                 }
+                Section {
+                    Toggle("Save replays of reps that need work",isOn:$saveReplays).accessibilityIdentifier("replays.save")
+                } footer: { Text("Short videos stay on this iPhone and are never uploaded. Logging out deletes them.") }
                 Section("Golf markers") {
                     Toggle("I'm using neon-orange markers", isOn: $golfMarkers)
                     Text("Stick neon-orange markers on the back of your lead glove and the club head.").font(.caption)
@@ -53,7 +57,7 @@ struct SettingsView: View {
                 Section {
                     Toggle("Share pose data to improve accuracy", isOn: $sharePose)
                 } header: { Text("Optional pose sharing") } footer: {
-                    Text("Off by default. When enabled, joint positions and confidence values are saved during new sessions and sent to the backend. No photos, video or audio are recorded. Turning this off deletes pose recordings still waiting on this iPhone.")
+                    Text("Off by default. When enabled, joint positions and confidence values are saved during new sessions and sent to the backend. No photos, video or audio are uploaded as pose data. Turning this off deletes pose recordings still waiting on this iPhone.")
                 }
                 Section {
                     Button("Save preferences") {

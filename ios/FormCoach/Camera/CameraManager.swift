@@ -180,7 +180,9 @@ final class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
                 replay = nil
                 #endif
                 let snapshot = pipeline.finish()
-                continuation.resume(returning: snapshot)
+                if let recorder=pipeline.replayRecorder {
+                    recorder.finish { clips in var completed=snapshot; completed.replays=clips; continuation.resume(returning:completed) }
+                } else { continuation.resume(returning:snapshot) }
             }
         }
     }

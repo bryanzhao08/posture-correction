@@ -389,3 +389,32 @@ including quiet HUD cycling, correction card, holograms, summary reopening and s
 catalog and marker checks also passed (11/12 total); the unchanged gallery navigation missed its
 tap in that run, after passing in both earlier batch8 runs. Exported compact/mini/hidden and
 correction screenshots were visually inspected. All artifacts are /tmp/formcoach-codex/batch8/.
+
+## Batch 7 part 2: local replay capture
+
+Save replays of reps that need work defaults off, in Settings and preparation. Starting with it
+off asks once; either answer is remembered before capture starts. The source queue retains
+480px JPEGs at about 15fps for 4.3 seconds, capped at 4 MB. At most two bounded jobs and twenty
+clips per session encode on a separate serial queue. Missing rep coverage skips a clip. Stored
+clips cover start−0.4 to end+0.4, with a fading cyan correction around the key event, white pose
+and arrows, readable cue caption below the image, and 23 final freeze frames (~1.5 seconds).
+Source frames and skeletons remain unmirrored; the player must mirror them together for front
+camera and the encoded caption is counter-mirrored for that display. Simulator clips draw the
+actual fixture poses on a dark background through the same writer path.
+
+Application Support session folders hold protected MP4s and thumbnail metadata. Replay fields
+exist only on LocalSession, never SessionIn or the pose-upload recording. Logout/account removal
+purges clips and metadata; deleting a local session removes its JSON and clip folder. Completed
+clips are imported before saving session JSON; failed saves can retry from temporary sources.
+
+Changed files: new Camera/ReplayRecorder; CameraManager, PoseSessionPipeline, RepFeedback,
+SessionController; Services Models/SessionStore; AppState; SettingsView, TrainingSessionFlow,
+SummaryView (saved-clip count); FormCoachFlowTests; README.
+Verification: build-for-testing passed. Capture UI test passed in
+/tmp/formcoach-codex/batch7-part2/capture-final.xcresult. Two encoded clips were independently
+read with OpenCV: H.264, 270×480, 15fps, 53 frames / 3.53 seconds, under 92 KB each. The final
+22 frames match with mean pixel difference below 0.002, verifying the freeze. Upload payload
+contains no replay fields. Decoded freeze images were inspected; caption does not cover joints.
+Earlier test attempts caught a row-label tap that failed to toggle consent; the final test taps
+the native switch and asserts its value before starting. Inspection data and clips are in
+/tmp/formcoach-codex/batch7-part2/clips/.

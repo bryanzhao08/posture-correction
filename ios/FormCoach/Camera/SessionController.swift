@@ -135,7 +135,7 @@ final class SessionController: ObservableObject {
             startedAt: Display.timestamp(startedAt), durationS: duration, summary: summary,
             reps: snapshot.reps, appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0",
             device: Self.deviceIdentifier(), view: view, focus: focus)
-        let id = try state.saveSession(payload, recording: snapshot.recording)
+        let id = try state.saveSession(payload, recording: snapshot.recording,replays:snapshot.replays)
         state.repCards[id] = snapshot.cards
         return id
     }

@@ -161,13 +161,14 @@ final class AppState: ObservableObject {
         }
     }
     @discardableResult
-    func saveSession(_ payload: SessionIn, recording: Recording?) throws -> String {
+    func saveSession(_ payload: SessionIn, recording: Recording?,replays:[CapturedReplay] = []) throws -> String {
         guard !deletingAccount else { throw APIError(message: "Your account is being deleted.") }
         if sessions.contains(where: { $0.id == payload.clientID }) { return payload.clientID }
         guard let store = store else { throw APIError(message: "Session storage is unavailable. Log in again.") }
         let local = LocalSession(payload: payload, server: nil, recording: sharePose ? recording : nil,
-                                 poseUploaded: false, uploadError: nil)
+                                 poseUploaded: false, uploadError: nil,replays:try store.importReplays(replays,sessionID:payload.clientID))
         try store.save(local)
+        for folder in Set(replays.map { $0.url.deletingLastPathComponent() }) { try? FileManager.default.removeItem(at:folder) }
         sessions.insert(local, at: 0)
         Task { await self.syncPending() }
         return local.id
@@ -278,7 +279,12 @@ final class AppState: ObservableObject {
             defaults.set(try JSONEncoder().encode(cache.user), forKey: "cachedUser")
         }
     }
+    func replayURL(sessionID:String,replay:LocalReplay) -> URL? { store?.replayURL(sessionID:sessionID,replay:replay) }
+    func deleteLocalSession(_ id:String) throws {
+        try store?.deleteSession(id); sessions.removeAll { $0.id == id }; repCards[id]=nil
+    }
     func logout() throws {
+        try store?.deleteReplays()
         try KeychainStore.delete()
         generation = UUID()
         api.token = nil

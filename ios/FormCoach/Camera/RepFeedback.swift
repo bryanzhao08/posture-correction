@@ -83,7 +83,7 @@ final class FeedbackBuffer {
 /// Shared by the glance card, detail view and the on-device replay renderer.
 enum FeedbackDrawing {
     static let bones=[("l_shoulder","r_shoulder"),("l_shoulder","l_elbow"),("l_elbow","l_wrist"),("r_shoulder","r_elbow"),("r_elbow","r_wrist"),("l_shoulder","l_hip"),("r_shoulder","r_hip"),("l_hip","r_hip"),("l_hip","l_knee"),("l_knee","l_ankle"),("r_hip","r_knee"),("r_knee","r_ankle"),("nose","l_shoulder"),("nose","r_shoulder")]
-    static func draw(frame: FeedbackFrame,corrected: [String: Point]?,size: CGSize,context: CGContext,ghostAlpha: CGFloat = 0.65) {
+    static func draw(frame: FeedbackFrame,corrected: [String: Point]?,size: CGSize,context: CGContext,ghostAlpha: CGFloat = 0.65,moveReference: [String:Point]? = nil) {
         func pixel(_ p: Point) -> CGPoint { CGPoint(x:p.x/frame.aspect*size.width,y:p.y*size.height) }
         func line(_ a: Point,_ b: Point) { context.move(to:pixel(a)); context.addLine(to:pixel(b)); context.strokePath() }
         context.setLineCap(.round); context.setLineWidth(max(1.5,size.height/160))
@@ -92,14 +92,15 @@ enum FeedbackDrawing {
         let radius=max(2,size.height/100)
         for p in frame.pose.values { let c=pixel(p); context.fillEllipse(in:CGRect(x:c.x-radius,y:c.y-radius,width:radius*2,height:radius*2)) }
         guard let corrected=corrected else { return }
-        let moved=Set(corrected.compactMap { name,p in frame.pose[name].map { hypot(p.x-$0.x,p.y-$0.y)>0.002 ? name : nil } ?? nil })
+        let source=moveReference ?? frame.pose
+        let moved=Set(corrected.compactMap { name,p in source[name].map { hypot(p.x-$0.x,p.y-$0.y)>0.002 ? name : nil } ?? nil })
         let cyan=UIColor.cyan.withAlphaComponent(ghostAlpha)
         context.setStrokeColor(cyan.cgColor); context.setFillColor(cyan.cgColor)
         context.setShadow(offset:.zero,blur:4,color:cyan.cgColor)
         for (a,b) in bones where moved.contains(a) || moved.contains(b) { if let a=corrected[a],let b=corrected[b] { line(a,b) } }
         context.setShadow(offset:.zero,blur:0,color:nil)
         for name in moved {
-            guard let a=frame.pose[name],let b=corrected[name] else { continue }
+            guard let a=source[name],let b=corrected[name] else { continue }
             let start=pixel(a),end=pixel(b), angle=atan2(end.y-start.y,end.x-start.x), head=max(4,size.height/65)
             line(a,b)
             context.move(to:CGPoint(x:end.x-head*cos(angle-0.5),y:end.y-head*sin(angle-0.5)))
