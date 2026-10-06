@@ -350,3 +350,17 @@ Six preparation/HUD screenshots were exported to `batch6/screenshots/` and visua
 The initial Simulator run displayed blank content despite a populated accessibility hierarchy;
 a Simulator reboot restored rendering. A test launch-argument override that locked the stored
 scoreboard preference was replaced by an explicit DEBUG-only reset. All final checks passed.
+
+## Batch 7 part 1: correction parity
+
+FormCore exposes `Point`, `correctionEvent(analyzer:metric:)` and
+`correctedPose(analyzer:metric:target:pose:ref:torso:dominant:repType:)`. The rules, reference events,
+two-bone IK, target clamping and missing-joint behavior match `ml/formcoach/corrections.py`.
+Rotation, racket head stability and timing intentionally have no 2D correction.
+`formcore-check --corrections <file>` compares returned joint dictionaries within 1e-6, including
+null results. The authorized xfail line was removed from the Swift corrections parity test.
+
+Changed files: FormCore `Corrections.swift`, `Engine.swift` (public Point), formcore-check
+`main.swift`, the one xfail line in `ml/tests/test_parity.py`, and this README.
+Verification: required parity suite passed all four tests (two existing NumPy deprecation
+warnings); log and temporary fixtures are under `/tmp/formcoach-codex/batch7-part1/`.

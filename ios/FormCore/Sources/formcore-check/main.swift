@@ -7,6 +7,30 @@ import FormCore
 //             "expected": {"reps": [Rep JSON], "rejected": {reason: n}, "score": Double?}}]
 
 let args = CommandLine.arguments
+if args.count == 3, args[1] == "--corrections" {
+    let data = try Data(contentsOf: URL(fileURLWithPath: args[2]))
+    let fixtures = try JSONSerialization.jsonObject(with: data) as! [[String: Any]]
+    func points(_ value: Any?) -> [String: Point]? {
+        guard let object = value as? [String: [Double]] else { return nil }
+        return object.mapValues { Point(x: $0[0], y: $0[1]) }
+    }
+    var failures = 0
+    for (i, f) in fixtures.enumerated() {
+        let actual = correctedPose(analyzer: f["analyzer"] as! String, metric: f["metric"] as! String,
+            target: f["target"] as! Double, pose: points(f["pose"])!, ref: points(f["ref"]),
+            torso: f["torso"] as! Double, dominant: f["dom"] as! String, repType: f["rep_type"] as? String ?? "")
+        let expected = points(f["expected"])
+        let agrees: Bool
+        if let a = actual, let e = expected {
+            agrees = Set(a.keys) == Set(e.keys) && e.allSatisfy { name, p in
+                abs(a[name]!.x - p.x) <= 1e-6 && abs(a[name]!.y - p.y) <= 1e-6
+            }
+        } else { agrees = actual == nil && expected == nil }
+        if !agrees { failures += 1; print("MISMATCH correction \(i): \(f["analyzer"]!) \(f["metric"]!)") }
+    }
+    print("\(failures == 0 ? "OK" : "FAILED"): \(fixtures.count) corrections, \(failures) mismatches")
+    exit(failures == 0 ? 0 : 1)
+}
 guard args.count == 3,
       let fixtureData = FileManager.default.contents(atPath: args[1]),
       let profileData = FileManager.default.contents(atPath: args[2]) else {

@@ -118,8 +118,17 @@ def correction_fixtures():
     return out
 
 
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js not installed")
+def test_web_corrections_match_python(tmp_path):
+    path = tmp_path / "corrections.json"
+    path.write_text(json.dumps(correction_fixtures()))
+    run = subprocess.run(["node", str(WEB / "scripts" / "check.ts"), "--corrections", str(path)],
+                         capture_output=True, text=True)
+    print(run.stdout)
+    assert run.returncode == 0, run.stdout[-6000:] + run.stderr[-2000:]
+
+
 @pytest.mark.skipif(shutil.which("swift") is None, reason="Swift toolchain not installed")
-@pytest.mark.xfail(reason="Swift port of corrections pending (Codex batch 7 removes this mark)", strict=False)
 def test_swift_corrections_match_python(tmp_path):
     path = tmp_path / "corrections.json"
     path.write_text(json.dumps(correction_fixtures()))

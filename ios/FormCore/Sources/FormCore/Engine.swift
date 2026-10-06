@@ -2,9 +2,10 @@ import Foundation
 
 // Port of ml/formcoach/engine.py. Keep the two in step; `swift run formcore-check` verifies it.
 
-struct Point {
-    var x: Double
-    var y: Double
+public struct Point: Codable, Equatable {
+    public var x: Double
+    public var y: Double
+    public init(x: Double, y: Double) { self.x = x; self.y = y }
 }
 
 struct Sample {
