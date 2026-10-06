@@ -24,12 +24,15 @@ struct LastRepCard: View {
 }
 struct RepFeedbackDetail: View {
     let card: RepCard
+    var replay:ReplaySelection? = nil
+    @State private var showReplay=false
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment:.leading,spacing:16) {
                     RepFreezeFrame(card:card).frame(maxHeight:440)
+                    if replay != nil { Button("Play replay") { showReplay=true }.buttonStyle(.borderedProminent).accessibilityIdentifier("rep.feedback.replay") }
                     Text(card.shortLabel).font(.title2.bold())
                     Text("Rep \(card.index) · Score \(Display.score(card.rep.score))").font(.headline)
                     Text(card.corrected == nil ? "Your pose (white)" : "Your pose (white) vs the fix (cyan)").font(.caption)
@@ -40,5 +43,6 @@ struct RepFeedbackDetail: View {
                 .accessibilityIdentifier("rep.feedback.detail")
                 .toolbar { ToolbarItem(placement:.confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("rep.feedback.close") } }
         }.modifier(DemoPresentation())
+            .fullScreenCover(isPresented:$showReplay) { if let replay=replay { ReplayView(selection:replay) } }
     }
 }

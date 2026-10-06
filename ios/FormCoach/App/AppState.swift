@@ -26,6 +26,10 @@ final class AppState: ObservableObject {
         #if DEBUG && targetEnvironment(simulator)
         // The end-to-end registration test uses an isolated backend and cannot reuse another server's login.
         if CommandLine.arguments.contains("-uiTesting") && CommandLine.arguments.contains("-resetTestAccount") {
+            if CommandLine.arguments.contains("-resetReplayPreferences") {
+                UserDefaults.standard.removeObject(forKey:"saveReplays")
+                UserDefaults.standard.removeObject(forKey:"replayOfferSeen")
+            }
             if CommandLine.arguments.contains("-resetScoreboard") {
                 UserDefaults.standard.removeObject(forKey: "scoreboardMode")
             }
@@ -281,7 +285,10 @@ final class AppState: ObservableObject {
     }
     func replayURL(sessionID:String,replay:LocalReplay) -> URL? { store?.replayURL(sessionID:sessionID,replay:replay) }
     func deleteLocalSession(_ id:String) throws {
-        try store?.deleteSession(id); sessions.removeAll { $0.id == id }; repCards[id]=nil
+        try store?.deleteSession(id)
+        generation=UUID(); isSyncing=false; syncRequested=false
+        sessions.removeAll { $0.id == id }; repCards[id]=nil
+        Task { await self.syncPending() }
     }
     func logout() throws {
         try store?.deleteReplays()

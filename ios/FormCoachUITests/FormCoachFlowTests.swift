@@ -8,7 +8,7 @@ final class FormCoachFlowTests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
         let backend = ProcessInfo.processInfo.environment["FORMCOACH_UI_TEST_BACKEND"] ?? "http://127.0.0.1:18004"
-        app.launchArguments = ["-uiTesting", "-resetTestAccount", "-backendURL", backend, "-offerMovementDemos", "YES", "-resetTrainingChoices", "-resetScoreboard"]
+        app.launchArguments = ["-uiTesting", "-resetTestAccount", "-backendURL", backend, "-offerMovementDemos", "YES", "-resetTrainingChoices", "-resetScoreboard", "-resetReplayPreferences"]
         app.launch()
     }
 
@@ -69,6 +69,30 @@ final class FormCoachFlowTests: XCTestCase {
         if decline.waitForExistence(timeout:2) { decline.tap() }
     }
 
+    func testReplayOfferIsShownOnceAndRespectsDecline() {
+        register()
+        let basketball=app.buttons.containing(NSPredicate(format:"label CONTAINS 'Basketball'")).firstMatch
+        XCTAssertTrue(basketball.waitForExistence(timeout:20)); basketball.tap()
+        XCTAssertTrue(app.buttons["training.start"].waitForExistence(timeout:10))
+        XCTAssertEqual(app.switches["replays.save"].value as? String,"0")
+        app.buttons["training.start"].tap()
+        XCTAssertTrue(app.alerts.buttons["Not now"].waitForExistence(timeout:5))
+        shot("replay-offer")
+        app.alerts.buttons["Not now"].tap()
+        XCTAssertTrue(app.buttons["End session"].waitForExistence(timeout:15))
+        app.buttons["End session"].tap()
+        XCTAssertTrue(app.navigationBars["Session summary"].waitForExistence(timeout:20))
+        XCTAssertFalse(app.staticTexts["replay.saved.count"].exists)
+        app.buttons["Done"].tap()
+        XCTAssertTrue(basketball.waitForExistence(timeout:10)); basketball.tap()
+        XCTAssertTrue(app.buttons["training.start"].waitForExistence(timeout:10))
+        XCTAssertEqual(app.switches["replays.save"].value as? String,"0")
+        app.buttons["training.start"].tap()
+        XCTAssertFalse(app.alerts.buttons["Not now"].waitForExistence(timeout:2))
+        XCTAssertTrue(app.buttons["End session"].waitForExistence(timeout:15))
+        app.buttons["End session"].tap()
+    }
+
     func testReplayCaptureStaysLocal() {
         register()
         let basketball=app.buttons.containing(NSPredicate(format:"label CONTAINS 'Basketball'")).firstMatch
@@ -83,6 +107,45 @@ final class FormCoachFlowTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Session summary"].waitForExistence(timeout:30))
         XCTAssertTrue(app.staticTexts["replay.saved.count"].exists || app.otherElements["replay.saved.count"].exists,"At least one local clip was encoded")
         shot("replay-capture-saved")
+        let row=app.buttons["replay.row.1"]
+        for _ in 0..<24 {
+            if row.isHittable,row.frame.minY > 110,row.frame.maxY < app.frame.height-80 { break }
+            app.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.7)).press(forDuration:0.05,thenDragTo:app.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.4)))
+        }
+        XCTAssertTrue(row.exists); row.tap()
+        XCTAssertTrue(app.buttons["replay.freeze"].waitForExistence(timeout:15))
+        XCTAssertTrue(app.sliders["replay.scrub"].exists)
+        XCTAssertTrue(app.buttons["replay.share"].waitForExistence(timeout:20))
+        shot("replay-player-motion")
+        app.buttons["replay.freeze"].tap()
+        shot("replay-player-fix")
+        app.sliders["replay.scrub"].adjust(toNormalizedSliderPosition:0.2)
+        shot("replay-player-scrubbed")
+        let demo=app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH 'replay.demo.'")).firstMatch
+        for _ in 0..<4 where !demo.isHittable { app.swipeUp() }
+        XCTAssertTrue(demo.exists,"Timing cue offers a hologram alongside the corrected cue")
+        demo.tap()
+        XCTAssertTrue(app.buttons["hologram.close"].waitForExistence(timeout:10))
+        shot("replay-timing-hologram")
+        close("hologram.close")
+        XCTAssertTrue(app.buttons["replay.close"].exists)
+        close("replay.close")
+        app.buttons["Done"].tap()
+        app.tabBars.buttons["History"].tap()
+        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout:10))
+        app.buttons["history.sport"].tap()
+        app.buttons["Basketball"].tap()
+        let entry=app.buttons.containing(NSPredicate(format:"label CONTAINS 'Saved replays'")).firstMatch
+        for _ in 0..<4 where !entry.isHittable { app.swipeUp() }
+        XCTAssertTrue(entry.exists,"History marks sessions with local clips")
+        shot("replay-history")
+        entry.tap()
+        XCTAssertTrue(app.navigationBars["Session summary"].waitForExistence(timeout:10))
+        XCTAssertTrue(app.buttons["replay.row.1"].exists,"History detail retains local replay rows")
+        app.navigationBars["Session summary"].buttons.element(boundBy:0).tap()
+        logOutIfNeeded()
+        XCTAssertTrue(app.buttons["Register"].waitForExistence(timeout:10))
+        shot("replay-logout")
     }
 
     func testRegisterPractiseGolfAndSync() {

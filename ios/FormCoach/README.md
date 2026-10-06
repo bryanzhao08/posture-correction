@@ -418,3 +418,33 @@ contains no replay fields. Decoded freeze images were inspected; caption does no
 Earlier test attempts caught a row-label tap that failed to toggle consent; the final test taps
 the native switch and asserts its value before starting. Inspection data and clips are in
 /tmp/formcoach-codex/batch7-part2/clips/.
+
+## Batch 7 part 3: replay review and sharing
+
+Summary and local session detail put replay thumbnail rows near the top, with rep number, score
+and the profile's short label (full-cue fallback when absent). History marks local clips with a
+film icon. The large freeze-frame card also offers Play replay when a clip exists. A full-screen
+AVPlayer loops, exposes a scrubber and Play/pause, and can jump to the final fix. Front-camera
+video composition mirrors pixels and skeleton together; Share prepares a temporary MP4 export
+with that same composition so captions remain readable. Temporary shares are removed on closing.
+Timing, rotation and head-stability cues alongside a corrected cue offer the existing Show me
+hologram, including when automatic demo offers are disabled. Closing a hologram resumes the
+player. Session uploads still contain no clips or thumbnail data.
+
+Changed files: new Views/ReplayView; HistoryView, SummaryView, RepFeedbackView; AppState (isolated
+DEBUG preference reset and invalidation of in-flight sync when deleting a local session);
+SessionStore (avoid rewriting sessions without replay metadata on logout); FormCoachFlowTests;
+DemoGalleryReviewTests (safe tap bounds/retry after the preferences section grew); README.
+
+Verification: build-for-testing passed. The focused two-test integration run passed, then the
+final complete suite passed all fourteen test methods with zero failures in
+/tmp/formcoach-codex/batch7-part3/final.xcresult. Gallery artwork used one representative tennis
+entry (full gallery artwork coverage was established in earlier batches). The final suite also
+covers compact/mini/hidden, card/detail/summary, sync, replay encoding/playback, freeze/scrub,
+sharing preparation, timing-cue hologram, history film icon/detail, one-time declined consent,
+and logout. An independent storage check confirmed the replay account's metadata, session clip
+folder and MP4s were removed after logout; result is batch7-part3/cleanup.json. Playback, freeze,
+scrub, consent and history screenshots were exported and visually inspected. Part 2's independent
+codec/frame/freeze and upload-payload inspection remains under batch7-part2/clips/.
+All build, test and exported artifacts are under /tmp/formcoach-codex/. Verification used the
+Simulator with the isolated backend on port 18004; no device camera capture was exercised.

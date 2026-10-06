@@ -40,7 +40,7 @@ struct HistoryView: View {
                 Section {
                     Picker("Sport", selection: $sport) {
                         ForEach(Sport.allCases) { sport in Text(sport.label).tag(sport) }
-                    }
+                    }.accessibilityIdentifier("history.sport")
                 }
                 if let error = state.error { Section { ErrorNotice(message: error) } }
                 if !trend.isEmpty || state.cache?.stats[sport.rawValue] != nil {
@@ -78,7 +78,7 @@ struct HistoryView: View {
                             NavigationLink {
                                 LocalSummaryView(sessionID: localID)
                             } label: {
-                                SessionRow(startedAt: session.startedAt, score: session.score, reps: session.reps, queued: session.queued, context: session.context)
+                                SessionRow(startedAt: session.startedAt, score: session.score, reps: session.reps, queued: session.queued, context: session.context,hasReplays:state.sessions.first { $0.id == localID }?.replays?.isEmpty == false)
                             }
                         } else if let serverID = session.serverID {
                             NavigationLink {
@@ -120,6 +120,7 @@ struct SessionRow: View {
     let reps: Int
     let queued: Bool
     var context: String? = nil
+    var hasReplays=false
     var body: some View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
@@ -128,6 +129,7 @@ struct SessionRow: View {
                 Text("\(reps) reps" + (queued ? " · Saved locally" : " · Synced")).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
+            if hasReplays { Image(systemName:"film").accessibilityLabel("Saved replays") }
             Text(Display.score(score)).font(.title2.bold()).monospacedDigit()
         }.padding(.vertical, 8).accessibilityElement(children: .combine)
     }

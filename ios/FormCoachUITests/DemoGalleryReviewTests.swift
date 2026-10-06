@@ -11,13 +11,18 @@ final class DemoGalleryReviewTests:XCTestCase {
         app.launch()
         let gallery=app.buttons["demo.gallery"]
         for _ in 0..<12 {
-            if gallery.isHittable, gallery.frame.maxY < app.frame.height - 70 { break }
-            app.swipeUp()
+            if gallery.isHittable,gallery.frame.minY > 110,gallery.frame.maxY < app.frame.height-80 { break }
+            let up=gallery.exists && gallery.frame.minY < 110
+            app.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:up ? 0.4 : 0.7)).press(forDuration:0.05,thenDragTo:app.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:up ? 0.7 : 0.4)))
         }
         XCTAssertTrue(gallery.waitForExistence(timeout:10)); gallery.tap()
         let url=try XCTUnwrap(Bundle(for:Self.self).url(forResource:"cue_catalog",withExtension:"json"))
         let entries=try XCTUnwrap(JSONSerialization.jsonObject(with:Data(contentsOf:url)) as? [[String:Any]])
         let search=app.searchFields.firstMatch
+        for _ in 0..<2 {
+            if search.waitForExistence(timeout:2) { break }
+            if gallery.isHittable { gallery.tap() }
+        }
         XCTAssertTrue(search.waitForExistence(timeout:10),app.debugDescription)
         var previousKey=""
         let onlyKey=ProcessInfo.processInfo.environment["FORMCOACH_GALLERY_REVIEW_KEY"]

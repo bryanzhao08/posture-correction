@@ -58,7 +58,7 @@ final class SessionStore {
         for var session in try loadSessions() {
             let folder=sessionsURL.appendingPathComponent(session.id)
             if FileManager.default.fileExists(atPath:folder.path) { try FileManager.default.removeItem(at:folder) }
-            session.replays=nil; try save(session)
+            if session.replays != nil { session.replays=nil; try save(session) }
         }
         // Remove orphan clip folders left by an interrupted session save.
         for url in try FileManager.default.contentsOfDirectory(at:sessionsURL,includingPropertiesForKeys:nil) where UUID(uuidString:url.lastPathComponent) != nil { try FileManager.default.removeItem(at:url) }

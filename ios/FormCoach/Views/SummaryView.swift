@@ -10,7 +10,7 @@ struct LocalSummaryView: View {
             if let local = state.sessions.first(where: { $0.id == sessionID }) {
                 SummaryContent(sport: local.payload.sport, startedAt: local.payload.startedAt,
                     duration: local.payload.durationS, summary: local.payload.summary, reps: local.payload.reps,
-                    comparison: local.server?.comparison, checkpoint: local.server?.checkpoint, cards: state.repCards[sessionID] ?? []) {
+                    comparison: local.server?.comparison, checkpoint: local.server?.checkpoint, cards: state.repCards[sessionID] ?? [],localID:sessionID,replays:local.replays ?? []) {
                     Section("Saved on this iPhone") {
                         if let clips=local.replays,!clips.isEmpty { Label("Saved replays: \(clips.count)",systemImage:"film").accessibilityIdentifier("replay.saved.count") }
                         if local.server == nil {
@@ -42,7 +42,7 @@ struct ServerDetailView: View {
             if let session = session {
                 SummaryContent(sport: session.sport, startedAt: session.startedAt, duration: session.durationS,
                                summary: session.summary, reps: session.reps, comparison: session.comparison,
-                               checkpoint: session.checkpoint) { EmptyView() }
+                               checkpoint: session.checkpoint,localID:state.sessions.first { $0.id == session.clientID }?.id,replays:state.sessions.first { $0.id == session.clientID }?.replays ?? []) { EmptyView() }
             } else if let error = error {
                 VStack(spacing: 16) {
                     ErrorNotice(message: error)
@@ -70,10 +70,13 @@ struct SummaryContent<Status: View>: View {
     let checkpoint: Checkpoint?
     let cards: [RepCard]
     @State private var selectedCard: RepCard?
+    @State private var selectedReplay: ReplaySelection?
+    let localID:String?
+    let replays:[LocalReplay]
     @ViewBuilder let status: () -> Status
     @ScaledMetric(relativeTo: .largeTitle) private var scoreFontSize: CGFloat = 64
     init(sport: String, startedAt: String, duration: Double, summary: SessionSummary, reps: [Rep],
-         comparison: Comparison?, checkpoint: Checkpoint?, cards: [RepCard] = [], @ViewBuilder status: @escaping () -> Status) {
+         comparison: Comparison?, checkpoint: Checkpoint?, cards: [RepCard] = [], localID:String? = nil,replays:[LocalReplay] = [], @ViewBuilder status: @escaping () -> Status) {
         self.sport = sport
         self.startedAt = startedAt
         self.duration = duration
@@ -82,6 +85,7 @@ struct SummaryContent<Status: View>: View {
         self.comparison = comparison
         self.checkpoint = checkpoint
         self.cards = cards
+        self.localID=localID; self.replays=replays
         self.status = status
     }
     var body: some View {
@@ -113,6 +117,21 @@ struct SummaryContent<Status: View>: View {
                 }.padding(.vertical, 8)
             }
             status()
+            if !replays.isEmpty,let localID=localID {
+                Section("Replays on this iPhone") {
+                    ForEach(replays) { clip in
+                        if let url=state.replayURL(sessionID:localID,replay:clip),clip.index > 0,clip.index <= reps.count {
+                            Button { selectedReplay=ReplaySelection(sessionID:localID,clip:clip,url:url,sport:sport,rep:reps[clip.index-1],view:summary.view) } label: {
+                                HStack {
+                                    if let image=UIImage(data:clip.thumbnail) { Image(uiImage:image).resizable().scaledToFit().scaleEffect(x:clip.mirrored ? -1 : 1,y:1).frame(width:48,height:72) }
+                                    Text("Rep \(clip.index) · \(Display.score(reps[clip.index-1].score)) · \(clip.shortLabel)")
+                                    Spacer(); Image(systemName:"play.circle.fill")
+                                }
+                            }.buttonStyle(.plain).accessibilityIdentifier("replay.row.\(clip.index)")
+                        }
+                    }
+                }
+            }
             Section("Coaching focus") {
                 if summary.topCues.isEmpty { Text("Complete more reps to get coaching cues.").foregroundStyle(.secondary) }
                 ForEach(Array(summary.topCues.enumerated()), id: \.offset) { _, cue in CoachingInstruction(text: cue, sport: sport, scope: sport + ":" + startedAt) }
@@ -195,6 +214,12 @@ struct SummaryContent<Status: View>: View {
                     }
                 }
             }
-        }.sheet(item:$selectedCard) { RepFeedbackDetail(card:$0) }
+        }.sheet(item:$selectedCard) { card in RepFeedbackDetail(card:card,replay:replay(for:card.index)) }
+            .fullScreenCover(item:$selectedReplay) { ReplayView(selection:$0) }
     }
+    private func replay(for index:Int) -> ReplaySelection? {
+        guard let id=localID,let clip=replays.first(where:{ $0.index == index }),let url=state.replayURL(sessionID:id,replay:clip),index > 0,index <= reps.count else { return nil }
+        return ReplaySelection(sessionID:id,clip:clip,url:url,sport:sport,rep:reps[index-1],view:summary.view)
+    }
+
 }
