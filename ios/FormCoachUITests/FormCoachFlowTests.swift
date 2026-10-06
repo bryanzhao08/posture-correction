@@ -20,6 +20,16 @@ final class FormCoachFlowTests: XCTestCase {
         add(a)
     }
 
+    private func close(_ identifier: String) {
+        let button=app.buttons[identifier]
+        for _ in 0..<3 {
+            if !button.exists { return }
+            button.tap()
+            if button.waitForNonExistence(timeout:2) { return }
+        }
+        XCTAssertFalse(button.exists,"Presentation dismissed before the next action")
+    }
+
     private func type(_ field: XCUIElement, _ text: String) {
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         for _ in 0..<5 {
@@ -39,15 +49,22 @@ final class FormCoachFlowTests: XCTestCase {
         logOut.tap()
     }
 
-    func testRegisterPractiseGolfAndSync() {
+    private func register() {
         logOutIfNeeded()
         XCTAssertTrue(app.buttons["Register"].waitForExistence(timeout: 10))
-        app.buttons["Register"].tap()
+        let register=app.segmentedControls.buttons["Register"]
+        for _ in 0..<3 where !register.isSelected { register.tap(); usleep(500_000) }
+        XCTAssertTrue(register.isSelected)
         type(app.textFields["Name"], "Sam Tester")
         type(app.textFields["Email"], "sam\(Int(Date().timeIntervalSince1970))@example.com")
         type(app.textFields["Password"], "correct horse 1")
         shot("1-register")
         app.buttons["Create account"].tap()
+
+    }
+
+    func testRegisterPractiseGolfAndSync() {
+        register()
 
         let golf = app.buttons.containing(NSPredicate(format: "label CONTAINS 'Golf'")).firstMatch
         XCTAssertTrue(golf.waitForExistence(timeout: 20), "home screen with sport cards")
@@ -66,27 +83,28 @@ final class FormCoachFlowTests: XCTestCase {
 
         let end = app.buttons["End session"]
         XCTAssertTrue(end.waitForExistence(timeout: 20))
-        let cueDemo = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'demo.show.golf.'")).firstMatch
-        XCTAssertTrue(cueDemo.waitForExistence(timeout: 40))
+        let card=app.buttons["rep.feedback.card"]
+        XCTAssertTrue(card.waitForExistence(timeout:40))
         XCTAssertTrue(app.staticTexts["REPS"].exists)
         XCTAssertTrue(app.staticTexts["SCORE"].exists)
-        shot("3a-scoreboard-full")
-        app.buttons["scoreboard.minimize"].tap()
-        XCTAssertTrue(app.buttons["scoreboard.show"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Want to see what this means?"].exists)
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH 'demo.show.golf.'")).firstMatch.exists)
+        shot("3a-scoreboard-compact")
+        app.buttons["scoreboard.cycle"].tap()
         XCTAssertFalse(app.staticTexts["REPS"].exists)
-        shot("3a-scoreboard-minimized")
-        app.buttons["scoreboard.show"].tap()
-        XCTAssertTrue(app.staticTexts["SCORE"].waitForExistence(timeout: 5))
-        app.buttons["scoreboard.minimize"].tap()
-        XCTAssertTrue(app.buttons["scoreboard.hide"].waitForExistence(timeout: 5))
-        app.buttons["scoreboard.hide"].tap()
-        XCTAssertTrue(app.buttons["scoreboard.show"].exists)
-        XCTAssertFalse(app.buttons["scoreboard.hide"].exists)
+        XCTAssertEqual(app.buttons["scoreboard.cycle"].label,"Hide scoreboard")
+        shot("3a-scoreboard-mini")
+        app.buttons["scoreboard.cycle"].tap()
+        XCTAssertEqual(app.buttons["scoreboard.cycle"].label,"Show scoreboard")
         shot("3a-scoreboard-hidden")
-        app.buttons["scoreboard.show"].tap()
-        XCTAssertTrue(app.staticTexts["REPS"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["SCORE"].exists)
-        shot("3a-scoreboard-restored")
+        app.buttons["scoreboard.cycle"].tap()
+        XCTAssertTrue(app.staticTexts["REPS"].waitForExistence(timeout:5))
+        shot("3a-last-rep-card")
+        card.tap()
+        XCTAssertTrue(app.buttons["rep.feedback.close"].waitForExistence(timeout:5))
+        shot("3a-rep-feedback-detail")
+        let cueDemo=app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH 'demo.show.golf.'")).firstMatch
+        XCTAssertTrue(cueDemo.waitForExistence(timeout:5))
         cueDemo.tap()
         XCTAssertTrue(app.buttons["hologram.close"].waitForExistence(timeout: 10))
         sleep(1)
@@ -98,7 +116,8 @@ final class FormCoachFlowTests: XCTestCase {
         sleep(1)
         shot("3d-golf-hologram-correct")
         app.buttons["Replay"].tap()
-        app.buttons["hologram.close"].tap()
+        close("hologram.close")
+        close("rep.feedback.close")
         shot("3-session-mid")
         let done = app.staticTexts["Demo complete · tap End session"]
         XCTAssertTrue(done.waitForExistence(timeout: 60), "replay finished")
@@ -117,7 +136,7 @@ final class FormCoachFlowTests: XCTestCase {
         app.buttons["Correct"].tap()
         sleep(1)
         shot("4b-setup-hologram-correct")
-        app.buttons["hologram.close"].tap()
+        close("hologram.close")
         setupInstructions.tap()
         end.tap()
 
@@ -164,6 +183,36 @@ final class FormCoachFlowTests: XCTestCase {
         XCTAssertTrue(app.buttons["training.type"].label.contains("Serve"))
         app.buttons["Back"].tap()
     }
+    func testBasketballCorrectionCardAndSummary() {
+        register()
+        let basketball=app.buttons.containing(NSPredicate(format:"label CONTAINS 'Basketball'")).firstMatch
+        XCTAssertTrue(basketball.waitForExistence(timeout:20)); basketball.tap()
+        XCTAssertTrue(app.buttons["training.start"].waitForExistence(timeout:10)); app.buttons["training.start"].tap()
+        let card=app.buttons["rep.feedback.card"]
+        XCTAssertTrue(card.waitForExistence(timeout:40))
+        shot("quiet-basketball-card")
+        card.tap()
+        XCTAssertTrue(app.buttons["rep.feedback.close"].waitForExistence(timeout:10))
+        XCTAssertTrue(app.staticTexts["Your pose (white) vs the fix (cyan)"].exists)
+        shot("quiet-basketball-correction")
+        close("rep.feedback.close")
+        XCTAssertTrue(app.staticTexts["Demo complete · tap End session"].waitForExistence(timeout:60))
+        app.buttons["End session"].tap()
+        XCTAssertTrue(app.navigationBars["Session summary"].waitForExistence(timeout:20))
+        let stored=app.buttons["summary.feedback.1"]
+        for _ in 0..<24 {
+            if stored.isHittable, stored.frame.minY > 110, stored.frame.maxY < app.frame.height-80 { break }
+            let start=app.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.7))
+            let end=app.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.4))
+            start.press(forDuration:0.05,thenDragTo:end)
+        }
+        XCTAssertTrue(stored.exists); stored.tap()
+        XCTAssertTrue(app.buttons["rep.feedback.close"].waitForExistence(timeout:10))
+        XCTAssertTrue(app.staticTexts["Your pose (white) vs the fix (cyan)"].exists)
+        shot("quiet-summary-correction")
+        close("rep.feedback.close")
+    }
+
 }
 
 final class DemoCatalogCoverageTests: XCTestCase {

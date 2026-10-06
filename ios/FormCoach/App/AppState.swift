@@ -17,7 +17,8 @@ final class AppState: ObservableObject {
     private var syncRequested = false
     private let defaults = UserDefaults.standard
     var user: User? { cache?.user }
-    var spokenCues: Bool { cache?.spokenCues ?? false }
+    var spokenCues: Bool { cache?.spokenCues ?? true }
+    @Published var repCards: [String: [RepCard]] = [:]
     var sharePose: Bool { cache?.sharePose ?? false }
     var pendingCount: Int { sessions.filter { $0.server == nil || ($0.recording != nil && !$0.poseUploaded) }.count }
 
@@ -284,6 +285,7 @@ final class AppState: ObservableObject {
         defaults.removeObject(forKey: "cachedUser")
         cache = nil
         sessions = []
+        repCards = [:]
         store = nil
         isSyncing = false
         syncRequested = false

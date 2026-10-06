@@ -72,7 +72,7 @@ public struct SportProfile: Decodable {
     public let label: String
     public var camera: String
     public var metrics: [MetricSpec]
-    let analyzer: String
+    public let analyzer: String
     let tracker: String
     public let defaultView: String?
     public let views: [String: CameraViewProfile]?
@@ -119,12 +119,15 @@ public struct MetricSpec: Decodable {
     let oneSided: String?
     let byType: [String: TypeTarget?]?
     let onlyTypes: [String]?
-    let cueLow: String
-    let cueHigh: String
+    public let cueLow: String
+    public let cueHigh: String
+    public let shortLow: String?
+    public let shortHigh: String?
     enum CodingKeys: String, CodingKey {
         case id, label, unit, mean, std, tol, weight
         case oneSided = "one_sided", byType = "by_type", cueLow = "cue_low", cueHigh = "cue_high"
         case onlyTypes = "only_types"
+        case shortLow = "short_low", shortHigh = "short_high"
     }
 }
 
@@ -191,4 +194,12 @@ public struct TrainingType: Decodable, Identifiable {
     public let recommended: String
     public let views: [String]
     public let why: String
+}
+
+public extension SportProfile {
+    func metric(forCue cue: String) -> MetricSpec? { metrics.first { $0.cueLow == cue || $0.cueHigh == cue } }
+    func shortLabel(forCue cue: String) -> String {
+        guard let spec=metric(forCue:cue) else { return cue }
+        return (spec.cueLow == cue ? spec.shortLow : spec.shortHigh) ?? cue
+    }
 }

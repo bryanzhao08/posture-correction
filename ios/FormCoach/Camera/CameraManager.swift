@@ -166,7 +166,7 @@ final class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
             }
             let markers = markersEnabled ? markerTracker.detect(buffer) : []
             let tracked = markersEnabled ? markerTracker.substitute(joints: joints, markers: markers, t: t) : joints
-            onFrame?(pipeline.processFrame(t: t, joints: tracked, aspect: aspect, mirrored: position == .front, markers: markers))
+            onFrame?(pipeline.processFrame(t: t, joints: tracked, aspect: aspect, mirrored: position == .front, markers: markers, imageBuffer: buffer))
         }
     }
     func finish() async -> SessionCapture {

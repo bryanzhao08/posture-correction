@@ -26,6 +26,7 @@ final class SessionController: ObservableObject {
     private var disposed = false
     private var snapshot: SessionCapture?
     private var duration: Double = 0
+    private var lastSpokenAt = -Double.infinity
     @Published var frame: CameraFrameState?
     @Published var error: String?
     @Published var spokenCues: Bool
@@ -105,8 +106,12 @@ final class SessionController: ObservableObject {
     private func feedback(_ rep: Rep) {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         AudioServicesPlaySystemSound(1057)
-        if spokenCues, let cue = rep.cues.first, !speaker.isSpeaking {
-            let utterance = AVSpeechUtterance(string: cue)
+        let now = ProcessInfo.processInfo.systemUptime
+        let phrase = rep.cues.first.map { profile.shortLabel(forCue: $0) }
+            ?? (UserDefaults.standard.bool(forKey: "sayNice") ? "Nice" : nil)
+        if spokenCues, let phrase = phrase, now-lastSpokenAt >= 6, !speaker.isSpeaking {
+            lastSpokenAt = now
+            let utterance = AVSpeechUtterance(string: phrase)
             utterance.rate = AVSpeechUtteranceDefaultSpeechRate
             speaker.speak(utterance)
         }
@@ -130,7 +135,9 @@ final class SessionController: ObservableObject {
             startedAt: Display.timestamp(startedAt), durationS: duration, summary: summary,
             reps: snapshot.reps, appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0",
             device: Self.deviceIdentifier(), view: view, focus: focus)
-        return try state.saveSession(payload, recording: snapshot.recording)
+        let id = try state.saveSession(payload, recording: snapshot.recording)
+        state.repCards[id] = snapshot.cards
+        return id
     }
     func stop() { disposed = true; camera.stop(); stopSpeech(); restoreAwake() }
     private func restoreAwake() {

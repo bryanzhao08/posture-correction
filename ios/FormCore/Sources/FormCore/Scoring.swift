@@ -2,11 +2,11 @@ import Foundation
 
 // Port of ml/formcoach/scoring.py. Keep the two in step; `swift run formcore-check` verifies it.
 
-struct Target {
-    let mean, std, tol: Double
+public struct Target {
+    public let mean, std, tol: Double
 }
 
-func targetFor(_ spec: MetricSpec, _ repType: String) -> Target? {
+public func targetFor(_ spec: MetricSpec, _ repType: String) -> Target? {
     if let only = spec.onlyTypes, !only.contains(repType) { return nil }
     if let entry = spec.byType?[repType] {
         guard let o = entry else { return nil }

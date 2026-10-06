@@ -364,3 +364,28 @@ Changed files: FormCore `Corrections.swift`, `Engine.swift` (public Point), form
 `main.swift`, the one xfail line in `ml/tests/test_parity.py`, and this README.
 Verification: required parity suite passed all four tests (two existing NumPy deprecation
 warnings); log and temporary fixtures are under `/tmp/formcoach-codex/batch7-part1/`.
+
+## Batch 8: quiet coaching
+
+The live HUD cycles compact / mini / hidden and migrates the former full mode. It no longer
+shows rep-end cue text or demo prompts. Speech uses optional profile short labels, with full-cue
+fallback, one cue per rep and a six-second minimum interval. Speak cues defaults on; optional
+“Nice” feedback defaults off. Settings and preparation expose these preferences.
+
+A memory-only 360px / 10fps image window and paired poses produce the lower-leading last-rep
+card. Detail and summary reopen the white pose / cyan correction drawing, full explanation and
+Show me hologram. Simulator frames use a dark background; front-camera drawings mirror with
+the image. Timing/rotation/head-stability faults retain a plain white skeleton. Swift preserves
+Python rules exactly: elbow-flare translates elbow and wrist rather than preserving the upper
+arm with IK. Coach review of that rule remains advisable; it is not changed by this UI work.
+
+Changed files: Camera RepFeedback (new), CameraManager, PoseSessionPipeline, SessionController;
+Views RepFeedbackView (new), SessionView, TrainingSessionFlow, SettingsView, SummaryView;
+App/AppState, Services/Models; FormCore Models and Scoring; FormCoachFlowTests; this README.
+
+Verification: build-for-testing passed; required parity suite passed all four tests (two existing
+NumPy warnings). Both updated flow tests passed together in batch8/tests-verified.xcresult,
+including quiet HUD cycling, correction card, holograms, summary reopening and sync. Anatomy,
+catalog and marker checks also passed (11/12 total); the unchanged gallery navigation missed its
+tap in that run, after passing in both earlier batch8 runs. Exported compact/mini/hidden and
+correction screenshots were visually inspected. All artifacts are /tmp/formcoach-codex/batch8/.

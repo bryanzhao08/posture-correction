@@ -10,7 +10,7 @@ struct LocalSummaryView: View {
             if let local = state.sessions.first(where: { $0.id == sessionID }) {
                 SummaryContent(sport: local.payload.sport, startedAt: local.payload.startedAt,
                     duration: local.payload.durationS, summary: local.payload.summary, reps: local.payload.reps,
-                    comparison: local.server?.comparison, checkpoint: local.server?.checkpoint) {
+                    comparison: local.server?.comparison, checkpoint: local.server?.checkpoint, cards: state.repCards[sessionID] ?? []) {
                     Section("Saved on this iPhone") {
                         if local.server == nil {
                             Label(state.isSyncing ? "Uploading…" : "Upload queued", systemImage: "icloud.and.arrow.up")
@@ -67,10 +67,12 @@ struct SummaryContent<Status: View>: View {
     let reps: [Rep]
     let comparison: Comparison?
     let checkpoint: Checkpoint?
+    let cards: [RepCard]
+    @State private var selectedCard: RepCard?
     @ViewBuilder let status: () -> Status
     @ScaledMetric(relativeTo: .largeTitle) private var scoreFontSize: CGFloat = 64
     init(sport: String, startedAt: String, duration: Double, summary: SessionSummary, reps: [Rep],
-         comparison: Comparison?, checkpoint: Checkpoint?, @ViewBuilder status: @escaping () -> Status) {
+         comparison: Comparison?, checkpoint: Checkpoint?, cards: [RepCard] = [], @ViewBuilder status: @escaping () -> Status) {
         self.sport = sport
         self.startedAt = startedAt
         self.duration = duration
@@ -78,6 +80,7 @@ struct SummaryContent<Status: View>: View {
         self.reps = reps
         self.comparison = comparison
         self.checkpoint = checkpoint
+        self.cards = cards
         self.status = status
     }
     var body: some View {
@@ -166,7 +169,16 @@ struct SummaryContent<Status: View>: View {
             if !reps.isEmpty {
                 Section("Every counted rep") {
                     ForEach(Array(reps.enumerated()), id: \.offset) { index, rep in
-                        DisclosureGroup("Rep \(index + 1) · \(rep.type.capitalized) · \(Display.score(rep.score))/100") {
+                        if let card=cards.first(where: { $0.index == index+1 }) {
+                            Button { selectedCard=card } label: {
+                                HStack {
+                                    RepFreezeFrame(card:card).frame(width:48,height:72)
+                                    Text("Rep \(index+1) · \(Display.score(rep.score)) · \(card.shortLabel)")
+                                }
+                            }.buttonStyle(.plain).accessibilityIdentifier("summary.feedback.\(index+1)")
+                        }
+                        let shortLabel=rep.cues.first.map { state.profiles?.sports[sport]?.effective(for:summary.view).shortLabel(forCue:$0) ?? $0 }
+                        DisclosureGroup("Rep \(index + 1) · \(rep.type.capitalized) · \(Display.score(rep.score))/100" + (shortLabel.map { " · " + $0 } ?? "")) {
                             ForEach(rep.metrics.keys.sorted(), id: \.self) { metric in
                                 let spec = state.profiles?.sports[sport]?.effective(for: summary.view).metrics.first { $0.id == metric }
                                 VStack(alignment: .leading, spacing: 4) {
@@ -175,11 +187,13 @@ struct SummaryContent<Status: View>: View {
                                     ScoreBar(score: rep.scores[metric])
                                 }.padding(.vertical, 8)
                             }
-                            ForEach(Array(rep.cues.enumerated()), id: \.offset) { _, cue in CoachingInstruction(text: cue, sport: sport, scope: sport + ":" + startedAt) }
+                            ForEach(Array(rep.cues.enumerated()), id: \.offset) { _, cue in
+                                Text(state.profiles?.sports[sport]?.effective(for:summary.view).shortLabel(forCue:cue) ?? cue)
+                            }
                         }
                     }
                 }
             }
-        }
+        }.sheet(item:$selectedCard) { RepFeedbackDetail(card:$0) }
     }
 }

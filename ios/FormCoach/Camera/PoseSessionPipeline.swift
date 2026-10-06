@@ -1,4 +1,5 @@
 import Foundation
+import CoreVideo
 import FormCore
 
 struct CameraFrameState {
@@ -13,16 +14,22 @@ struct CameraFrameState {
     let lastRep: Rep?
     let countedReps: [Rep]
     let markers: [MarkerPoint]
+    let latestCard: RepCard?
 }
 struct SessionCapture {
     let summary: SessionSummary
     let reps: [Rep]
     let recording: Recording?
+    let cards: [RepCard]
 }
 
 // All callers own this object on their source's serial queue. Counting/scoring stay in FormCore.
 final class PoseSessionPipeline {
     private let engine: FormEngine
+    private let feedback = FeedbackBuffer()
+    private let profile: SportProfile
+    private var cards: [RepCard] = []
+    private var latestCard: RepCard?
     private let view: String?
     private let focus: String?
     private let sport: String
@@ -39,6 +46,7 @@ final class PoseSessionPipeline {
     var engineState: EngineState { engine.state }
 
     init(profiles: Profiles, sport: String, handedness: Handedness, collectPose: Bool, view: String? = nil, focus: String? = nil) {
+        self.profile = profiles.sports[sport]!.effective(for: view ?? profiles.sports[sport]!.defaultView)
         self.view = view; self.focus = focus
         self.sport = sport
         self.handedness = handedness
@@ -46,9 +54,10 @@ final class PoseSessionPipeline {
         self.collectPose = collectPose
         engine = FormEngine(profiles: profiles, sport: sport, handedness: handedness, view: view, focus: focus)
     }
-    func resetSetup() { setupSince = nil; countingStarted = false }
-    func processFrame(t: Double, joints: [JointObservation?], aspect: Double, mirrored: Bool, markers: [MarkerPoint] = []) -> CameraFrameState {
+    func resetSetup() { setupSince = nil; countingStarted = false; feedback.clear() }
+    func processFrame(t: Double, joints: [JointObservation?], aspect: Double, mirrored: Bool, markers: [MarkerPoint] = [], imageBuffer: CVPixelBuffer? = nil) -> CameraFrameState {
         self.aspect = aspect
+        feedback.append(t:t,joints:joints,names:jointNames,aspect:aspect,mirrored:mirrored,buffer:imageBuffer)
         let setup = setupMessage(joints)
         var countdown: Int?
         if !countingStarted {
@@ -72,12 +81,16 @@ final class PoseSessionPipeline {
             let engineJoints = countingStarted ? joints : Array<JointObservation?>(repeating: nil, count: jointNames.count)
             // The app never decides what a rep is; FormCore owns all counting and rejection logic.
             for event in engine.push(t: t, joints: engineJoints, aspect: aspect) {
-                if case .rep(let rep) = event { lastRep = rep; counted.append(rep) }
+                if case .rep(let rep) = event {
+                    lastRep = rep; counted.append(rep)
+                    latestCard = feedback.card(rep:rep,index:engine.reps.count,sport:sport,profile:profile,dominant:handedness == .right ? "r" : "l")
+                    if let card=latestCard { cards.append(card) }
+                }
             }
         }
         return CameraFrameState(joints: joints, aspect: aspect, mirrored: mirrored,
             setupMessage: countingStarted ? nil : setup, countdown: countdown, started: countingStarted,
-            engineState: engine.state, repCount: engine.reps.count, lastRep: lastRep, countedReps: counted, markers: markers)
+            engineState: engine.state, repCount: engine.reps.count, lastRep: lastRep, countedReps: counted, markers: markers, latestCard: latestCard)
     }
     private func setupMessage(_ joints: [JointObservation?]) -> String? {
         func point(_ name: String) -> JointObservation? {
@@ -98,9 +111,9 @@ final class PoseSessionPipeline {
     func finish() -> SessionCapture {
         let recording = collectPose && !frames.isEmpty
             ? Recording(sport: sport, handedness: handedness, aspect: aspect, frames: frames, view: view, focus: focus) : nil
-        let snapshot = SessionCapture(summary: engine.summary(), reps: engine.reps, recording: recording)
+        let snapshot = SessionCapture(summary: engine.summary(), reps: engine.reps, recording: recording, cards: cards)
         frames.removeAll()
         return snapshot
     }
-    func discardRecording() { frames.removeAll() }
+    func discardRecording() { frames.removeAll(); feedback.clear(); cards.removeAll(); latestCard=nil }
 }

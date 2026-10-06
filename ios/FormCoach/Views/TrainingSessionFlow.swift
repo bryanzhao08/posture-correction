@@ -7,7 +7,9 @@ import FormCore
     let sport: Sport
     let profile: SportProfile
     let handedness: Handedness
-    let spokenCues: Bool
+    @State var spokenCues: Bool
+    @AppStorage("sayNice") private var sayNice = false
+    @EnvironmentObject private var state: AppState
     let sharePose: Bool
     @Environment(\.dismiss) private var dismiss
     @State private var trainingID = ""
@@ -39,6 +41,11 @@ import FormCore
                                 }.pickerStyle(.segmented).accessibilityIdentifier("training.view")
                                 cameraInstructions
                             }
+                        }
+                        Section("Coaching audio") {
+                            Toggle("Speak cues", isOn:$spokenCues)
+                                .onChange(of:spokenCues) { _, value in try? state.setSpokenCues(value) }
+                            Toggle("Say 'nice' on good reps", isOn:$sayNice)
                         }
                         if selected == nil {
                             Section("Camera placement") { cameraInstructions }

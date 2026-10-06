@@ -195,7 +195,7 @@ struct AccountCache: Codable {
     var details: [String: SessionOut] = [:]
     var checkpoints: [String: [Checkpoint]] = [:]
     var pendingPatch: UserPatch?
-    var spokenCues = false
+    var spokenCues = true
     var sharePose = false
     enum CodingKeys: String, CodingKey {
         case user, stats, history, details, checkpoints, pendingPatch, spokenCues, sharePose

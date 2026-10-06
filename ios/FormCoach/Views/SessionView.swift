@@ -37,10 +37,10 @@ struct SessionView: View {
     @State private var busy = false
     @State private var saveError: String?
     @State private var showSetupInstructions = false
-    @ScaledMetric(relativeTo: .largeTitle) private var repFontSize: CGFloat = 112
-    @AppStorage("scoreboardMode") private var scoreboardMode = "full"
+    @ScaledMetric(relativeTo: .largeTitle) private var repFontSize: CGFloat = 40
+    @AppStorage("scoreboardMode") private var scoreboardMode = "compact"
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var recentCue = false
+    @State private var selectedCard: RepCard?
     @ScaledMetric(relativeTo: .largeTitle) private var countdownFontSize: CGFloat = 88
     init(controller: SessionController, onSaved: @escaping (String) -> Void, onCancel: @escaping () -> Void) {
         _controller = ObservedObject(wrappedValue: controller)
@@ -78,56 +78,34 @@ struct SessionView: View {
                                     .disabled(controller.frame?.engineState == .active || controller.isFinished)
                             }
                         }
-                        HStack(spacing: 16) {
-                            Text(controller.stateLabel).font(.title.bold()).padding(.horizontal, 20).padding(.vertical, 12)
+                        HStack(spacing: 12) {
+                            Text(controller.stateLabel).font(.headline).padding(12)
                                 .background(.black.opacity(0.85), in: Capsule())
                             Spacer(minLength: 0)
-                            if controller.frame?.started == true, scoreboardMode != "full" {
-                                HStack(spacing: 4) {
-                                    Button { changeScoreboard("full") } label: {
-                                        if scoreboardMode == "minimized" {
-                                            Text("\(controller.frame?.repCount ?? 0) reps · \(Display.score(controller.frame?.lastRep?.score))")
-                                                .font(.headline).monospacedDigit()
-                                        } else { Image(systemName: "number.square") }
-                                    }.frame(minHeight: 44).accessibilityLabel("Show scoreboard")
-                                        .accessibilityIdentifier("scoreboard.show")
-                                    if scoreboardMode == "minimized" {
-                                        Button { changeScoreboard("hidden") } label: { Image(systemName: "xmark") }
-                                            .frame(width: 44, height: 44).accessibilityLabel("Hide scoreboard")
-                                            .accessibilityIdentifier("scoreboard.hide")
-                                    }
-                                }.padding(.horizontal, 12).background(.black.opacity(0.85), in: Capsule())
+                            if controller.frame?.started == true, scoreboardMode != "compact" {
+                                Button { changeScoreboard(scoreboardMode == "mini" ? "hidden" : "compact") } label: {
+                                    if scoreboardMode == "mini" {
+                                        Text("\(controller.frame?.repCount ?? 0) · \(Display.score(controller.frame?.lastRep?.score))")
+                                            .font(.headline).monospacedDigit()
+                                    } else { Image(systemName: "number.square") }
+                                }.frame(minWidth: 44, minHeight: 44).padding(.horizontal, 8)
+                                    .background(.black.opacity(0.85), in: Capsule())
+                                    .accessibilityLabel(scoreboardMode == "mini" ? "Hide scoreboard" : "Show scoreboard")
+                                    .accessibilityIdentifier("scoreboard.cycle")
                             }
                         }
-                        if controller.frame?.started == true, scoreboardMode == "minimized", recentCue,
-                           let cue = controller.frame?.lastRep?.cues.first {
-                            Text(cue).font(.headline).lineLimit(1).padding(12)
-                                .background(.black.opacity(0.85), in: Capsule())
+                        if controller.frame?.started == true, scoreboardMode == "compact" {
+                            HStack(spacing: 12) {
+                                scoreboardNumber("\(controller.frame?.repCount ?? 0)", label: "REPS")
+                                Rectangle().fill(.white.opacity(0.3)).frame(width: 1, height: repFontSize)
+                                scoreboardNumber(Display.score(controller.frame?.lastRep?.score), label: "SCORE")
+                                Button { changeScoreboard("mini") } label: { Image(systemName: "chevron.down") }
+                                    .frame(width: 44, height: 44).accessibilityLabel("Minimize scoreboard")
+                                    .accessibilityIdentifier("scoreboard.cycle")
+                            }.padding(12).background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 16))
                         }
                         Spacer(minLength: 0)
-                        if controller.frame?.started == true {
-                            if scoreboardMode == "full" {
-                                VStack(spacing: 8) {
-                                    HStack {
-                                        Spacer()
-                                        Button { changeScoreboard("minimized") } label: { Image(systemName: "chevron.down") }
-                                            .frame(width: 44, height: 44).accessibilityLabel("Minimize scoreboard")
-                                            .accessibilityIdentifier("scoreboard.minimize")
-                                    }
-                                    HStack(spacing: 12) {
-                                        scoreboardNumber("\(controller.frame?.repCount ?? 0)", label: "REPS")
-                                        Rectangle().fill(.white.opacity(0.3)).frame(width: 1, height: repFontSize)
-                                        scoreboardNumber(Display.score(controller.frame?.lastRep?.score), label: "SCORE")
-                                    }
-                                    if let cue = controller.frame?.lastRep?.cues.first {
-                                        CoachingInstruction(text: cue, sport: controller.sport.rawValue, scope: controller.demoScope)
-                                            .font(.title2.bold()).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-                                    }
-                                }.padding(20).frame(maxWidth: .infinity)
-                                    .background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 24))
-                                    .accessibilityElement(children: .contain)
-                            }
-                        } else {
+                        if controller.frame?.started != true {
                             VStack(spacing: 16) {
                                 CoachingInstruction(text: controller.profile.camera, sport: controller.sport.rawValue, scope: controller.demoScope, setup: true).font(.headline).multilineTextAlignment(.center)
                                 if let countdown = controller.frame?.countdown {
@@ -138,10 +116,13 @@ struct SessionView: View {
                                         .font(.title2.bold()).multilineTextAlignment(.center)
                                 }
                                 if controller.markersEnabled { Text("Markers: \(controller.frame?.markers.count ?? 0) found").font(.caption).foregroundStyle(.orange) }
-                                if !controller.isReplaying {
-                                    Text("After switching cameras, the setup check starts again.").font(.footnote)
-                                }
                             }.padding(24).frame(maxWidth: .infinity).background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 24))
+                        }
+                        if let card=controller.frame?.latestCard {
+                            HStack {
+                                LastRepCard(card:card) { selectedCard=card }.frame(width:geometry.size.width*0.28)
+                                Spacer()
+                            }
                         }
                         if controller.frame?.started == true {
                             VStack(alignment: .leading, spacing: 12) {
@@ -166,12 +147,6 @@ struct SessionView: View {
                             }.buttonStyle(.borderedProminent).frame(minHeight: 44)
                             Button("Back to sports", action: onCancel).frame(minHeight: 44)
                         }
-                        Toggle("Speak coaching cues", isOn: $controller.spokenCues)
-                            .padding(16).background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 16))
-                            .onChange(of: controller.spokenCues) { _, value in
-                                if !value { controller.stopSpeech() }
-                                do { try state.setSpokenCues(value) } catch { saveError = error.localizedDescription }
-                            }
                         Button { Task { await finishAndSave() } } label: {
                             HStack {
                                 if busy { ProgressView().tint(.white) }
@@ -185,10 +160,11 @@ struct SessionView: View {
         .foregroundStyle(.white)
         .preferredColorScheme(.dark)
         .task { await controller.start() }
-        .task(id: controller.frame?.repCount) {
-            recentCue = (controller.frame?.repCount ?? 0) > 0
-            do { try await Task.sleep(for: .seconds(4)); recentCue = false } catch { }
+        .onAppear {
+            if scoreboardMode == "full" { scoreboardMode="compact" }
+            if scoreboardMode == "minimized" { scoreboardMode="mini" }
         }
+        .sheet(item:$selectedCard) { RepFeedbackDetail(card:$0) }
         .onDisappear { if !DemoOffers.shared.isPresenting { controller.stop() } }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { Task { await finishAndSave() } }
@@ -205,7 +181,7 @@ struct SessionView: View {
         VStack(spacing: 8) {
             Text(value).font(.system(size: repFontSize, weight: .heavy, design: .rounded))
                 .monospacedDigit().minimumScaleFactor(0.35).lineLimit(1)
-            Text(label).font(.title2.bold())
+            Text(label).font(.caption.bold())
         }.frame(maxWidth: .infinity)
     }
     private func changeScoreboard(_ mode: String) {

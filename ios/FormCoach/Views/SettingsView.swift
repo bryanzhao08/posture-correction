@@ -10,7 +10,8 @@ struct SettingsView: View {
     @AppStorage("orangeMarkers.pickleball") private var pickleballMarkers = false
     @State private var handedness: Handedness = .right
     @State private var emailReports = true
-    @State private var spokenCues = false
+    @State private var spokenCues = true
+    @AppStorage("sayNice") private var sayNice = false
     @State private var sharePose = false
     @State private var confirmDeletion = false
     @State private var busy = false
@@ -33,7 +34,8 @@ struct SettingsView: View {
                         Text("Left").tag(Handedness.left)
                     }
                     Toggle("Email progress reports", isOn: $emailReports)
-                    Toggle("Speak coaching cues", isOn: $spokenCues)
+                    Toggle("Speak cues", isOn: $spokenCues)
+                    Toggle("Say 'nice' on good reps", isOn: $sayNice)
                     Toggle("Offer movement demos", isOn: $offerMovementDemos)
                 }
                 Section("Golf markers") {
