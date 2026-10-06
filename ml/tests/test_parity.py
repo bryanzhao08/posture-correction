@@ -13,6 +13,7 @@ from formcoach.synth import recording
 from tests.test_engine import CASES
 
 PKG = Path(__file__).resolve().parents[2] / "ios" / "FormCore"
+WEB = Path(__file__).resolve().parents[2] / "web"
 
 
 def fixture(name, rec, profiles):
@@ -54,6 +55,18 @@ def view_samples(every=4):
 
 @pytest.mark.skipif(shutil.which("swift") is None, reason="Swift toolchain not installed")
 def test_swift_engine_matches_python(tmp_path):
+    path = tmp_path / "fixtures.json"
+    path.write_text(json.dumps(engine_fixtures()))
+    build = subprocess.run(["swift", "build", "-c", "release", "--package-path", str(PKG)],
+                           capture_output=True, text=True)
+    assert build.returncode == 0, build.stderr[-4000:] + build.stdout[-4000:]
+    exe = PKG / ".build" / "release" / "formcore-check"
+    run = subprocess.run([str(exe), str(path), str(PROFILES_PATH)], capture_output=True, text=True)
+    print(run.stdout)
+    assert run.returncode == 0, run.stdout[-6000:] + run.stderr[-2000:]
+
+
+def engine_fixtures():
     profiles = load_profiles()
     fx = []
     for name, (sport, script, _) in CASES.items():
@@ -63,13 +76,16 @@ def test_swift_engine_matches_python(tmp_path):
                               profiles))
     fx += [fixture(n, r, profiles) for n, r in real_samples()]
     fx += [fixture(n, r, profiles) for n, r in view_samples()]
+    return fx
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js not installed")
+def test_web_engine_matches_python(tmp_path):
+    """The browser demo (web/src/engine, TypeScript run directly by Node 23+) must agree too."""
     path = tmp_path / "fixtures.json"
-    path.write_text(json.dumps(fx))
-    build = subprocess.run(["swift", "build", "-c", "release", "--package-path", str(PKG)],
-                           capture_output=True, text=True)
-    assert build.returncode == 0, build.stderr[-4000:] + build.stdout[-4000:]
-    exe = PKG / ".build" / "release" / "formcore-check"
-    run = subprocess.run([str(exe), str(path), str(PROFILES_PATH)], capture_output=True, text=True)
+    path.write_text(json.dumps(engine_fixtures()))
+    run = subprocess.run(["node", str(WEB / "scripts" / "check.ts"), str(path), str(PROFILES_PATH)],
+                         capture_output=True, text=True)
     print(run.stdout)
     assert run.returncode == 0, run.stdout[-6000:] + run.stderr[-2000:]
 

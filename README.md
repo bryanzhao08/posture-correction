@@ -5,6 +5,12 @@ a tripod in front of you. It counts real swings and shots only, scores each one 
 professional reference ranges, tells you what to fix, saves every session, and emails you
 progress reports.
 
+## Web demo
+
+Try it in the browser, no install: **https://bryanzhao08.github.io/posture-correction/**. Pose
+tracking runs on your device and sessions stay in that browser (no login or emails). Setup,
+deploys and limits: [`docs/WEB_DEMO.md`](docs/WEB_DEMO.md).
+
 ## How it works
 
 ```mermaid
@@ -116,6 +122,7 @@ ml/tests/                    engine tests on synthetic recordings + Swift/Python
 backend/                     FastAPI API, SQLite, JWT auth, Resend emails, tests
 ios/FormCore/                Swift port of the engine (Swift package + formcore-check tool)
 ios/FormCoach/               SwiftUI app (camera, Vision, sessions, history, settings)
+web/                         browser demo (Vite + TypeScript engine port, MediaPipe pose)
 docs/                        contracts, Xcode deployment guide, privacy draft, data collection
 ```
 

@@ -1,0 +1,22 @@
+{
+  "name": "formcoach-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "check": "node scripts/check.ts",
+    "predev": "node scripts/fetch-assets.mjs",
+    "prebuild": "node scripts/fetch-assets.mjs"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "^0.10.21"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.3"
+  }
+}
