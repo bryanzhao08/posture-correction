@@ -36,7 +36,7 @@ func scoreRep(_ metrics: [String: Double], _ repType: String, _ specs: [MetricSp
     var scores: [String: Double] = [:]
     var wsum = 0.0
     var total = 0.0
-    var worst: [(Double, String)] = []
+    var worst: [(Int, Double, String)] = []
     for spec in specs {
         guard let v = metrics[spec.id], let s = metricScore(v, spec, repType, scoring.zScale) else { continue }
         scores[spec.id] = s
@@ -44,15 +44,17 @@ func scoreRep(_ metrics: [String: Double], _ repType: String, _ specs: [MetricSp
         total += spec.weight * s
         if s < 75.0, let tgt = targetFor(spec, repType) {
             let cue = v > tgt.mean ? spec.cueHigh : spec.cueLow
-            if !cue.isEmpty { worst.append((s, cue)) }
+            // cues for the metrics the drill is about come first
+            if !cue.isEmpty { worst.append((spec.focus ? 0 : 1, s, cue)) }
         }
     }
     if wsum == 0 { return RepScore(scores: scores, total: nil, cues: []) }
-    // stable sort by score, matching Python's list.sort
+    // stable sort by (focus, score), matching Python's list.sort
     let ordered = worst.enumerated().sorted { a, b in
-        a.element.0 != b.element.0 ? a.element.0 < b.element.0 : a.offset < b.offset
+        if a.element.0 != b.element.0 { return a.element.0 < b.element.0 }
+        return a.element.1 != b.element.1 ? a.element.1 < b.element.1 : a.offset < b.offset
     }
-    return RepScore(scores: scores, total: total / wsum, cues: ordered.prefix(2).map { $0.element.1 })
+    return RepScore(scores: scores, total: total / wsum, cues: ordered.prefix(2).map { $0.element.2 })
 }
 
 func summarize(sport: String, reps: [Rep], rejected: [String: Int], specs: [MetricSpec],

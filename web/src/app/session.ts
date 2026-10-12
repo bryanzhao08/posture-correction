@@ -1,5 +1,6 @@
 // A live practice session: frames from the camera (or a sample recording) -> engine -> HUD callbacks.
 import { Engine, type EngineEvent, type Joint, type Profiles, type Recording } from "../engine/engine.ts";
+import type { Player } from "../engine/personalize.ts";
 import { detect, loadPose } from "./pose.ts";
 import type { Frame } from "./fixcard.ts";
 
@@ -8,6 +9,8 @@ export interface SessionOptions {
   handedness: string;
   view: string;
   focus: string | null;
+  player: Player | null;
+  drill: string | null;
 }
 
 export interface SessionHooks {
@@ -54,7 +57,7 @@ abstract class BaseSession {
   protected t0 = 0;
   protected lastState = "";
   constructor(profiles: Profiles, public opts: SessionOptions, protected hooks: SessionHooks) {
-    this.engine = new Engine(profiles, opts.sport, opts.handedness, opts.view, opts.focus);
+    this.engine = new Engine(profiles, opts.sport, opts.handedness, opts.view, opts.focus, opts.player, opts.drill);
   }
   protected feed(t: number, joints: Joint[] | null, aspect: number) {
     const evs = this.engine.push(t, joints ?? new Array(13).fill(null), aspect);

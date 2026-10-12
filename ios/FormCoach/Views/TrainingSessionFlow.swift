@@ -18,6 +18,12 @@ import FormCore
     @AppStorage("saveReplays") private var saveReplays = false
     @AppStorage("replayOfferSeen") private var replayOfferSeen = false
     @State private var offerReplays = false
+    @State private var drillID = ""
+    @AppStorage(PlayerSettings.heightKey) private var heightCm = 0.0
+    @AppStorage(PlayerSettings.metricKey) private var metric = Locale.current.measurementSystem != .us
+    private var drills: [Drill] { profile.drills(for: choices.isEmpty ? nil : selected?.id) }
+    private var drill: Drill? { drills.first { $0.id == drillID } ?? drills.first }
+    private var player: Player { PlayerSettings.current(profiles.player) }
     private var choices: [TrainingType] { profile.training ?? [] }
     private var selected: TrainingType? { choices.first { $0.id == trainingID } ?? choices.first }
     var body: some View {
@@ -25,7 +31,8 @@ import FormCore
             if started {
                 SessionFlow(profiles: profiles, sport: sport, profile: profile, handedness: handedness,
                             spokenCues: spokenCues, sharePose: sharePose, view: choices.isEmpty ? nil : view,
-                            focus: selected?.id == "serve" ? "serve" : nil, training: selected?.id)
+                            focus: selected?.id == "serve" ? "serve" : nil, training: selected?.id,
+                            player: player, drill: drill?.id)
             } else {
                 NavigationStack {
                     Form {
@@ -45,6 +52,24 @@ import FormCore
                                 cameraInstructions
                             }
                         }
+                        if !drills.isEmpty {
+                            Section {
+                                Picker("Drill", selection: Binding(get: { drill?.id ?? "" }, set: { drillID = $0 })) {
+                                    ForEach(drills) { Text($0.label).tag($0.id) }
+                                }.accessibilityIdentifier("training.drill")
+                                if let drill = drill {
+                                    Text(drill.about)
+                                    if let tip = drill.tip { Label(tip, systemImage: "lightbulb").font(.subheadline) }
+                                    let focus = (drill.emphasis ?? [:]).filter { $0.value > 1 }.keys
+                                    let labels = profile.effective(for: view).metrics.filter { focus.contains($0.id) }.map(\.label)
+                                    if !labels.isEmpty { Text("Focus: " + labels.joined(separator: ", ")).font(.subheadline).foregroundStyle(.secondary) }
+                                    if let types = drill.types { Text("Only \(types.joined(separator: " and "))s count.").font(.caption).foregroundStyle(.secondary) }
+                                }
+                            } header: { Text("Drill") } footer: {
+                                let level = player.level.flatMap { profiles.player?.levels[$0]?.label } ?? ""
+                                Text("Goal \(drill?.goalReps ?? 0) reps · scored as \(level) · height \(PlayerSettings.heightLabel(player.heightCm, metric: metric)). Change your level and height in Settings.")
+                            }
+                        }
                         Section("Coaching audio") {
                             Toggle("Speak cues", isOn:$spokenCues)
                                 .onChange(of:spokenCues) { _, value in try? state.setSpokenCues(value) }
@@ -57,6 +82,7 @@ import FormCore
                     }.navigationTitle(sport.label + " practice")
                         .safeAreaInset(edge: .bottom) {
                             Button {
+                                if let drill = drill { UserDefaults.standard.set(drill.id, forKey: "drill." + sport.rawValue) }
                                 if !choices.isEmpty {
                                     UserDefaults.standard.set(trainingID, forKey: "training." + sport.rawValue)
                                     UserDefaults.standard.set(view, forKey: "trainingView." + sport.rawValue)
@@ -75,6 +101,7 @@ import FormCore
             Button("Not now") { replayOfferSeen=true; started=true }
         } message: { Text("They stay on this iPhone and are never uploaded.") }
         .onAppear {
+            if drillID.isEmpty { drillID = UserDefaults.standard.string(forKey: "drill." + sport.rawValue) ?? "" }
             guard trainingID.isEmpty, let first = choices.first else { return }
             let saved = UserDefaults.standard.string(forKey: "training." + sport.rawValue)
             let choice = choices.first { $0.id == saved } ?? first
@@ -86,8 +113,14 @@ import FormCore
         }
     }
     private var cameraInstructions: some View {
-        CoachingInstruction(text: profile.camera(for: view), sport: sport.rawValue,
-                            scope: "preparation." + sport.rawValue, setup: true, textIdentifier: "training.camera")
+        VStack(alignment: .leading, spacing: 8) {
+            CoachingInstruction(text: profile.camera(for: view), sport: sport.rawValue,
+                                scope: "preparation." + sport.rawValue, setup: true, textIdentifier: "training.camera")
+            if heightCm > 0 {
+                Text("At \(PlayerSettings.heightLabel(heightCm, metric: metric)), keep the phone at least \(PlayerSettings.minPhoneDistance(heightCm: heightCm, metric: metric)) away to fit you head to feet.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
     }
     static func viewLabel(_ view: String) -> String {
         switch view { case "back": return "From behind"; case "side": return "Side-on"; default: return "Face-on" }
@@ -98,6 +131,7 @@ import FormCore
     static func label(_ sport: String, summary: SessionSummary, profile: SportProfile?) -> String {
         var parts = [profile?.label ?? sport.capitalized]
         if let id = summary.training, let type = profile?.training?.first(where: { $0.id == id }) { parts.append(type.label) }
+        if let id = summary.drill, let drill = profile?.drills?.first(where: { $0.id == id }) { parts.append(drill.label) }
         if let view = summary.view { parts.append(TrainingSessionFlow.viewLabel(view).lowercased()) }
         return parts.joined(separator: " · ")
     }

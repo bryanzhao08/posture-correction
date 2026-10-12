@@ -74,7 +74,8 @@ public final class FormEngine {
     let sport: String
     public let view: String
     public let focus: String?
-    let profile: SportProfile
+    /// The view-, player- and drill-adjusted profile this engine scores with.
+    public let profile: SportProfile
     let dom: String
     let off: String
     private let cfg: Preprocess
@@ -107,14 +108,16 @@ public final class FormEngine {
     /// dominant shoulder is on while the player faces the camera.
     private(set) var facing = 0.0
 
-    public init(profiles: Profiles, sport: String, handedness: Handedness, view: String? = nil, focus: String? = nil) {
+    /// `player` and `drill` adapt the scoring (see Personalize.swift); without them it is unchanged.
+    public init(profiles: Profiles, sport: String, handedness: Handedness, view: String? = nil, focus: String? = nil,
+                player: Player? = nil, drill: String? = nil) {
         guard let profile = profiles.sports[sport] else {
             preconditionFailure("unknown sport \(sport)")
         }
         self.sport = sport
         self.view = (view?.isEmpty == false ? view : nil) ?? profile.defaultView ?? "front"
         self.focus = focus
-        self.profile = profile.effective(for: self.view)
+        self.profile = personalize(profile.effective(for: self.view), profiles.player, player, drill)
         cfg = profiles.preprocess
         scoring = profiles.scoring
         joints = profiles.joints
@@ -331,6 +334,12 @@ public final class FormEngine {
         let reason = gateFailure(stats, gates)
         if !reason.isEmpty { return reject(reason) }
         guard let result = analyze(seg) else { return reject("bad_pattern") }
+        if let types = profile.drill?.types, !types.isEmpty, !types.contains(result.type) {
+            // a real stroke, just not the one being drilled: close off its frames like a rep
+            lastSegEndT = t
+            cooldownUntil = t + det.refractoryMs / 1000.0
+            return reject("other_stroke")
+        }
         let scored = scoreRep(result.metrics, result.type, profile.metrics, scoring)
         guard let total = scored.total else { return reject("no_metrics") }
         let rep = Rep(tStart: seg[0].t, tEnd: seg[seg.count - 1].t, type: result.type, events: result.events,

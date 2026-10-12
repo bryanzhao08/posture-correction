@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import sports
+from .personalize import personalize
 from .scoring import score_rep
 
 PROFILES_PATH = Path(__file__).resolve().parents[2] / "shared" / "sport_profiles.json"
@@ -93,7 +94,7 @@ class Engine:
     """
 
     def __init__(self, profiles: dict, sport: str, handedness: str = "right", view: str | None = None,
-                 focus: str | None = None):
+                 focus: str | None = None, player: dict | None = None, drill: str | None = None):
         self.cfg = profiles["preprocess"]
         self.scoring = profiles["scoring"]
         self.joints = profiles["joints"]
@@ -101,7 +102,9 @@ class Engine:
         base = profiles["sports"][sport]
         self.view = view or base.get("default_view", "front")
         self.focus = focus            # training focus, e.g. "backhand"; only needed where 2D cannot tell
-        self.profile = effective_profile(base, self.view)
+        # player: {"height_cm", "level"}; drill: an id from the sport's "drills" (see personalize.py)
+        self.profile = personalize(effective_profile(base, self.view), profiles.get("player"), player, drill)
+        self.drill = self.profile.get("drill")
         self.det = self.profile["detect"]
         self.gates = self.profile["gates"]
         self.dom = "r" if handedness == "right" else "l"
@@ -323,6 +326,11 @@ class Engine:
         if result is None:
             return self._reject(t, "bad_pattern", stats)
         rep_type, ev, metrics = result
+        if self.drill and self.drill.get("types") and rep_type not in self.drill["types"]:
+            # a real stroke, just not the one being drilled: close off its frames like a rep
+            self._last_seg_end_t = t
+            self._cooldown_until = t + self.det["refractory_ms"] / 1000.0
+            return self._reject(t, "other_stroke", stats)
         scores, total, cues = score_rep(metrics, rep_type, self.profile["metrics"], self.scoring)
         if total is None:
             return self._reject(t, "no_metrics", stats)
@@ -379,9 +387,11 @@ def gate_failure(st: dict, g: dict) -> str:
 
 
 def analyze_recording(rec: dict, profiles: dict | None = None) -> Engine:
-    """rec: {"sport", "handedness", "aspect", "frames": [{"t", "j": [[x, y, c] * 13]}]}"""
+    """rec: {"sport", "handedness", "aspect", "frames": [{"t", "j": [[x, y, c] * 13]}]}, optionally
+    "view", "focus", "player" ({"height_cm", "level"}) and "drill" (drill id)."""
     profiles = profiles or load_profiles()
-    eng = Engine(profiles, rec["sport"], rec.get("handedness", "right"), rec.get("view"), rec.get("focus"))
+    eng = Engine(profiles, rec["sport"], rec.get("handedness", "right"), rec.get("view"), rec.get("focus"),
+                 rec.get("player"), rec.get("drill"))
     eng.events = []
     for fr in rec["frames"]:
         eng.events.extend(eng.push(fr["t"], fr["j"], rec.get("aspect", 1.0)))

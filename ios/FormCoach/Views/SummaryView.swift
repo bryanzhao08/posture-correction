@@ -88,6 +88,17 @@ struct SummaryContent<Status: View>: View {
         self.localID=localID; self.replays=replays
         self.status = status
     }
+    private var player: Player {
+        Player(heightCm: PlayerSettings.current(state.profiles?.player).heightCm, level: summary.level)
+    }
+    private var scoringProfile: SportProfile? {
+        state.profiles?.scoringProfile(sport: sport, view: summary.view, player: summary.level == nil ? nil : player,
+                                       drill: summary.drill)
+    }
+    private var goal: Int? { summary.drill.flatMap { id in state.profiles?.sports[sport]?.drills?.first { $0.id == id }?.goalReps } }
+    private var speeds: [Double] {
+        reps.compactMap { PlayerSettings.handSpeed($0, player: player, config: state.profiles?.player, metric: PlayerSettings.metric) }
+    }
     var body: some View {
         List {
             Section {
@@ -99,10 +110,19 @@ struct SummaryContent<Status: View>: View {
                             Text("SESSION SCORE").font(.caption.bold()).foregroundStyle(.secondary)
                         }
                         VStack(alignment: .leading) {
-                            Text("\(summary.repCount)").font(.largeTitle.bold()).monospacedDigit()
-                            Text("REPS").font(.caption.bold()).foregroundStyle(.secondary)
+                            Text(goal.map { "\(summary.repCount)/\($0)" } ?? "\(summary.repCount)").font(.largeTitle.bold()).monospacedDigit()
+                            Text(goal.map { summary.repCount >= $0 ? "GOAL REACHED" : "REPS OF GOAL" } ?? "REPS").font(.caption.bold()).foregroundStyle(.secondary)
                         }
                     }.accessibilityElement(children: .combine)
+                    if let level = summary.level.flatMap({ state.profiles?.player?.levels[$0]?.label }) {
+                        Text("Scored as \(level)").font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    if !speeds.isEmpty {
+                        let unit = PlayerSettings.speedUnit(metric: PlayerSettings.metric)
+                        Text("Hand speed \(Int((speeds.reduce(0, +) / Double(speeds.count)).rounded())) \(unit) average · \(Int(speeds.max()!.rounded())) fastest")
+                            .font(.subheadline)
+                        Text("Estimated from your height. The camera can't see motion toward it.").font(.caption).foregroundStyle(.secondary)
+                    }
                     Text(Display.date(startedAt), style: .date).font(.subheadline).foregroundStyle(.secondary)
                     Text("\(Int(duration / 60)) min \(Int(duration) % 60) sec · Active \(Int(summary.activeS)) sec · Rest \(Int(summary.passiveS)) sec")
                         .font(.caption).foregroundStyle(.secondary)
@@ -136,13 +156,19 @@ struct SummaryContent<Status: View>: View {
                 if summary.topCues.isEmpty { Text("Complete more reps to get coaching cues.").foregroundStyle(.secondary) }
                 ForEach(Array(summary.topCues.enumerated()), id: \.offset) { _, cue in CoachingInstruction(text: cue, sport: sport, scope: sport + ":" + startedAt) }
             }
-            Section("Your metrics and professional targets") {
-                if let profile = state.profiles?.sports[sport] {
-                    ForEach(profile.effective(for: summary.view).metrics, id: \.id) { spec in
+            Section(summary.level == nil ? "Your metrics and professional targets" : "Your metrics and targets") {
+                if let profile = scoringProfile {
+                    ForEach(profile.metrics.sorted { $0.focus && !$1.focus }, id: \.id) { spec in
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(spec.label).font(.headline)
-                            Text("You: \(Display.number(summary.metrics[spec.id]?.mean, unit: spec.unit))")
-                            Text("Pro target: \(Display.number(spec.mean, unit: spec.unit)) ± \(Display.number(spec.tol, unit: spec.unit))")
+                            HStack {
+                                Text(spec.label).font(.headline)
+                                if spec.focus { Text("FOCUS").font(.caption2.bold()).foregroundStyle(.orange) }
+                            }
+                            Text("You: \(Display.number(summary.metrics[spec.id]?.mean, unit: spec.unit))"
+                                 + (spec.unit == "torso" ? summary.metrics[spec.id].flatMap { m in
+                                     PlayerSettings.realDistance(m.mean, player: player, config: state.profiles?.player, metric: PlayerSettings.metric) }
+                                     .map { " (\($0))" } ?? "" : ""))
+                            Text("Target: \(Display.number(spec.mean, unit: spec.unit)) ± \(Display.number(spec.tol, unit: spec.unit))")
                                 .font(.subheadline).foregroundStyle(.secondary)
                             if let metric = summary.metrics[spec.id] {
                                 Text("\(metric.n) reps · SD \(Display.number(metric.sd, unit: spec.unit))").font(.caption).foregroundStyle(.secondary)

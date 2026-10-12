@@ -47,15 +47,18 @@ final class PoseSessionPipeline {
     var upright = false
     var engineState: EngineState { engine.state }
 
-    init(profiles: Profiles, sport: String, handedness: Handedness, collectPose: Bool, view: String? = nil, focus: String? = nil) {
+    init(profiles: Profiles, sport: String, handedness: Handedness, collectPose: Bool, view: String? = nil, focus: String? = nil,
+         player: Player? = nil, drill: String? = nil) {
         replayRecorder = UserDefaults.standard.bool(forKey:"saveReplays") ? ReplayRecorder() : nil
-        self.profile = profiles.sports[sport]!.effective(for: view ?? profiles.sports[sport]!.defaultView)
+        engine = FormEngine(profiles: profiles, sport: sport, handedness: handedness, view: view, focus: focus,
+                            player: player, drill: drill)
+        // the engine's profile carries the player's level and the drill's focus, so fix cards match the score
+        self.profile = engine.profile
         self.view = view; self.focus = focus
         self.sport = sport
         self.handedness = handedness
         self.jointNames = profiles.joints
         self.collectPose = collectPose
-        engine = FormEngine(profiles: profiles, sport: sport, handedness: handedness, view: view, focus: focus)
     }
     func resetSetup() { setupSince = nil; countingStarted = false; feedback.clear(); replayRecorder?.reset() }
     func processFrame(t: Double, joints: [JointObservation?], aspect: Double, mirrored: Bool, markers: [MarkerPoint] = [], imageBuffer: CVPixelBuffer? = nil) -> CameraFrameState {

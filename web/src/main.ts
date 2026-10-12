@@ -8,6 +8,9 @@ import { clearSessions, deleteSession, listSessions, pref, saveSession, setPref,
          type StoredSession } from "./app/store.ts";
 import { loadPose } from "./app/pose.ts";
 import { buildCard, drawCard, shortLabel, type FixCard } from "./app/fixcard.ts";
+import { drillsFor, findDrill, personalize, type Drill } from "./engine/personalize.ts";
+import { cmToFtIn, ftInToCm, handSpeed, heightLabel, loadPlayer, minPhoneDistance, savePlayer, speedUnit,
+         torsoToReal, type PlayerPrefs } from "./app/player.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const profiles: any = profilesJson;
@@ -26,7 +29,7 @@ const REJECT_LABEL: Record<string, string> = {
   too_slow: "not fast enough", too_small: "too small a movement", one_way: "a one-way movement, not a swing",
   bad_start: "hands started too high", not_high_enough: "hands didn't get high enough",
   bad_pattern: "didn't match the shape of this movement", lost_tracking: "lost sight of you mid-motion",
-  no_metrics: "not enough of you visible to score",
+  no_metrics: "not enough of you visible to score", other_stroke: "a different stroke from this drill's",
 };
 const SESSION_CHECKPOINT = 5;
 const UNIT: Record<string, string> = { deg: "°", s: " s" };
@@ -36,8 +39,23 @@ const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.ch
 const fmt = (v: number | null | undefined, d = 0) => (v == null || !isFinite(v) ? "—" : v.toFixed(d));
 let teardown: (() => void) | null = null;
 
-interface Setup { sport: string; training: string | null; view: string; stroke: "forehand" | "backhand" }
-const setup: Setup = { sport: "golf", training: null, view: "front", stroke: "forehand" };
+interface Setup { sport: string; training: string | null; view: string; stroke: "forehand" | "backhand"; drill: string | null }
+const setup: Setup = { sport: "golf", training: null, view: "front", stroke: "forehand", drill: null };
+const player = (): PlayerPrefs => loadPlayer(profiles.player);
+const LEVELS = ["beginner", "intermediate", "advanced", "pro"].filter((l) => l in profiles.player.levels);
+
+/** The drills on offer for the current sport and (tennis) training type; keeps setup.drill valid. */
+function setupDrills(): Drill[] {
+  const drills = drillsFor(profiles.sports[setup.sport], setup.training);
+  if (!drills.some((d) => d.id === setup.drill)) setup.drill = drills[0]?.id ?? null;
+  return drills;
+}
+
+/** The scoring profile a session used: camera view, then the player's level and height, then the drill. */
+function sessionProfile(sport: string, view: string, drill: string | null | undefined,
+                        p: { level?: string | null; height_cm?: number | null } | null) {
+  return personalize(sportProfile(sport, view), profiles.player, p, drill ?? null);
+}
 
 function sportProfile(sport: string, view?: string) {
   return effectiveProfile(profiles.sports[sport], view ?? profiles.sports[sport].default_view ?? "front");
@@ -65,6 +83,8 @@ function go(screen: () => void | Promise<void>) {
 async function home() {
   const sessions = await listSessions();
   const hand = pref<string>("handedness", "right");
+  const pl = player();
+  const [ft, inch] = pl.height_cm ? cmToFtIn(pl.height_cm) : [null, null];
   app.innerHTML = `
   <main class="page">
     <header class="brand">
@@ -81,10 +101,28 @@ async function home() {
           <span class="icon">${ICONS[s]}</span><span class="name">${esc(profiles.sports[s].label)}</span>
           <span class="muted small">${sessions.filter((x) => x.sport === s).length} saved sessions</span></button>`).join("")}
     </div>
+    <section class="card profile" aria-labelledby="profile-h">
+      <h3 id="profile-h">Your profile</h3>
+      <div class="form-grid">
+        <label><span>Height</span>
+          ${pl.units === "metric"
+            ? `<span class="field"><input id="h-cm" type="number" inputmode="numeric" min="${profiles.player.min_height_cm}" max="${profiles.player.max_height_cm}" step="1" placeholder="175" value="${pl.height_cm ? Math.round(pl.height_cm) : ""}"> cm</span>`
+            : `<span class="field"><input id="h-ft" type="number" inputmode="numeric" min="3" max="7" step="1" placeholder="5" value="${ft ?? ""}"> ft
+               <input id="h-in" type="number" inputmode="numeric" min="0" max="11" step="1" placeholder="9" value="${inch ?? ""}"> in</span>`}
+        </label>
+        <label><span>Level</span><select id="level">${LEVELS.map((l) =>
+          `<option value="${l}" ${l === pl.level ? "selected" : ""}>${esc(profiles.player.levels[l].label)}</option>`).join("")}</select></label>
+        <label><span>Hand</span><select id="hand"><option value="right" ${hand === "right" ? "selected" : ""}>Right</option>
+          <option value="left" ${hand === "left" ? "selected" : ""}>Left</option></select></label>
+        <label><span>Units</span><select id="units"><option value="imperial" ${pl.units === "imperial" ? "selected" : ""}>ft · mph</option>
+          <option value="metric" ${pl.units === "metric" ? "selected" : ""}>cm · km/h</option></select></label>
+      </div>
+      <p class="muted small" id="level-about">${esc(profiles.player.levels[pl.level!].about)}</p>
+      <p class="muted small" id="height-note">${pl.height_cm
+        ? `Height shows distances in ${pl.units === "metric" ? "cm" : "inches"}, estimates your hand speed and adjusts how much leg drive a basketball shot needs.`
+        : "Add your height to see hand speed and real distances."}</p>
+    </section>
     <div class="row between settings">
-      <label>I play with my
-        <select id="hand"><option value="right" ${hand === "right" ? "selected" : ""}>right hand</option>
-        <option value="left" ${hand === "left" ? "selected" : ""}>left hand</option></select></label>
       <button class="btn ghost" id="history">History & averages${sessions.length ? ` (${sessions.length})` : ""}</button>
     </div>
     <footer class="muted small">
@@ -98,9 +136,42 @@ async function home() {
     const p = profiles.sports[setup.sport];
     setup.training = p.training ? p.training[0].id : null;
     setup.view = p.training ? p.training[0].recommended : (p.default_view ?? "front");
+    setup.drill = null;
+    setupDrills();
     go(preSession);
   });
   (app.querySelector("#hand") as HTMLSelectElement).onchange = (e) => setPref("handedness", (e.target as HTMLSelectElement).value);
+  const save = (change: Partial<PlayerPrefs>) => savePlayer({ ...player(), ...change });
+  (app.querySelector("#level") as HTMLSelectElement).onchange = (e) => {
+    const level = (e.target as HTMLSelectElement).value;
+    save({ level });
+    app.querySelector("#level-about")!.textContent = profiles.player.levels[level].about;
+  };
+  (app.querySelector("#units") as HTMLSelectElement).onchange = (e) => {
+    save({ units: (e.target as HTMLSelectElement).value as PlayerPrefs["units"] });
+    void home();
+  };
+  const readHeight = (): number | null => {
+    const num = (id: string) => {
+      const el = app.querySelector<HTMLInputElement>(id);
+      return el && el.value.trim() !== "" ? Number(el.value) : null;
+    };
+    const cm = pl.units === "metric" ? num("#h-cm") : (num("#h-ft") != null ? ftInToCm(num("#h-ft")!, num("#h-in") ?? 0) : null);
+    if (cm == null || !isFinite(cm)) return null;
+    return cm >= profiles.player.min_height_cm && cm <= profiles.player.max_height_cm ? cm : NaN;
+  };
+  app.querySelectorAll<HTMLInputElement>("#h-cm, #h-ft, #h-in").forEach((el) => el.onchange = () => {
+    const cm = readHeight();
+    const note = app.querySelector("#height-note")!;
+    if (Number.isNaN(cm)) {
+      note.textContent = `Enter a height between ${heightLabel(profiles.player.min_height_cm, pl.units)} and ${heightLabel(profiles.player.max_height_cm, pl.units)}.`;
+      note.classList.add("bad");
+      return;
+    }
+    note.classList.remove("bad");
+    save({ height_cm: cm });
+    note.textContent = cm ? `Saved: ${heightLabel(cm, pl.units)}.` : "Height cleared.";
+  });
   (app.querySelector("#history") as HTMLButtonElement).onclick = () => go(history);
   void loadPose().catch(() => undefined); // warm up the model while the user reads
 }
@@ -108,9 +179,14 @@ async function home() {
 // ---------------------------------------------------------------- pre-session
 function preSession() {
   const base = profiles.sports[setup.sport];
-  const prof = sportProfile(setup.sport, setup.view);
+  const pl = player();
+  const drills = setupDrills();
+  const drill = findDrill(base, setup.drill);
+  const prof = sessionProfile(setup.sport, setup.view, setup.drill, pl);
   const trainings: { id: string; label: string; recommended: string; views: string[]; why: string }[] = base.training ?? [];
   const tr = trainings.find((t) => t.id === setup.training);
+  // drill focus first, then the rest
+  const scored = [...prof.metrics].sort((a: { focus?: boolean }, b: { focus?: boolean }) => Number(!!b.focus) - Number(!!a.focus));
   const showStroke = setup.sport === "tennis" && setup.view === "side" && setup.training !== "serve";
   app.innerHTML = `
   <main class="page">
@@ -126,14 +202,25 @@ function preSession() {
         `<button class="chip ${s === setup.stroke ? "on" : ""}" data-stroke="${s}">${s[0].toUpperCase() + s.slice(1)}</button>`).join("")}</div>
         <p class="muted small">Side-on, forehands and backhands look alike to the camera, so tell it which one you're practising.</p>` : ""}
     ` : ""}
+    ${drills.length ? `
+      <h2>Drill</h2>
+      <div class="chips">${drills.map((d) => `<button class="chip ${d.id === setup.drill ? "on" : ""}" data-drill="${d.id}">${esc(d.label)}</button>`).join("")}</div>
+      ${drill ? `<p>${esc(drill.about)}</p>${drill.tip ? `<p class="tip small">Tip: ${esc(drill.tip)}</p>` : ""}` : ""}
+    ` : ""}
+    <p class="muted small profile-line">Goal ${drill?.goal_reps ?? "—"} reps · scored as <strong>${esc(profiles.player.levels[pl.level!].label)}</strong>
+      · height ${esc(heightLabel(pl.height_cm, pl.units))} <button class="btn link small" id="edit-profile">Change</button></p>
     <section class="card setup">
       <h3>Set up your camera</h3>
       <p>${esc(prof.camera)}</p>
-      <p class="muted small">Your whole body, head to feet, needs to be in the picture. Good light helps a lot.</p>
+      <p class="muted small">Your whole body, head to feet, needs to be in the picture.${pl.height_cm
+        ? ` At ${esc(heightLabel(pl.height_cm, pl.units))}, a phone held upright needs to be at least ${minPhoneDistance(pl.height_cm, pl.units)} away to fit you in.`
+        : ""} Good light helps a lot.</p>
     </section>
     <section class="card">
       <h3>What gets scored</h3>
-      <ul class="metric-list">${prof.metrics.map((m: { label: string }) => `<li>${esc(m.label)}</li>`).join("")}</ul>
+      <ul class="metric-list">${scored.map((m: { label: string; focus?: boolean }) =>
+        `<li${m.focus ? ' class="focus"' : ""}>${esc(m.label)}${m.focus ? ' <span class="tag">focus</span>' : ""}</li>`).join("")}</ul>
+      ${drill?.types ? `<p class="muted small">Only ${esc(drill.types.join(" and "))}s count in this drill; other strokes are ignored.</p>` : ""}
     </section>
     <div class="actions">
       <button class="btn primary big" id="start">Start session</button>
@@ -151,6 +238,8 @@ function preSession() {
     setup.view = trainings.find((t) => t.id === setup.training)!.recommended;
     preSession();
   });
+  app.querySelectorAll<HTMLButtonElement>("[data-drill]").forEach((b) => b.onclick = () => { setup.drill = b.dataset.drill!; preSession(); });
+  app.querySelector<HTMLButtonElement>("#edit-profile")!.onclick = () => go(home);
   app.querySelectorAll<HTMLButtonElement>("[data-view]").forEach((b) => b.onclick = () => { setup.view = b.dataset.view!; preSession(); });
   app.querySelectorAll<HTMLButtonElement>("[data-stroke]").forEach((b) => b.onclick = () => { setup.stroke = b.dataset.stroke as Setup["stroke"]; preSession(); });
   app.querySelector<HTMLInputElement>("#rear")!.onchange = (e) => setPref("rearCamera", (e.target as HTMLInputElement).checked);
@@ -167,7 +256,12 @@ type BoardMode = "compact" | "mini" | "hidden";
 const NEXT_BOARD: Record<BoardMode, BoardMode> = { compact: "mini", mini: "hidden", hidden: "compact" };
 
 async function live(source: "camera" | "sample") {
-  const opts: SessionOptions = { sport: setup.sport, handedness: pref("handedness", "right"), view: setup.view, focus: focusFor(setup) };
+  const pl = player();
+  const opts: SessionOptions = { sport: setup.sport, handedness: pref("handedness", "right"), view: setup.view, focus: focusFor(setup),
+                                 player: { height_cm: pl.height_cm, level: pl.level }, drill: setup.drill };
+  const drill = findDrill(profiles.sports[setup.sport], setup.drill);
+  const goal = drill?.goal_reps ?? null;
+  let goalSaid = false;
   const mirrored = source === "camera" && !pref("rearCamera", false);
   const stored = pref<string>("scoreboard", "compact");
   let board: BoardMode = stored === "mini" || stored === "hidden" ? stored : "compact";
@@ -182,9 +276,11 @@ async function live(source: "camera" | "sample") {
         <span class="pill" id="state">Starting…</span>
         <div class="row gap">
           <div class="board" id="board">
-            <div class="col"><div class="lbl">REPS</div><div class="num" id="reps">0</div></div>
+            <div class="col"><div class="lbl">REPS</div><div class="num" id="reps">${goal ? `0/${goal}` : 0}</div></div>
             <div class="divider"></div>
             <div class="col"><div class="lbl">SCORE</div><div class="num" id="score">—</div></div>
+            ${pl.height_cm ? `<div class="divider"></div>
+            <div class="col"><div class="lbl">${speedUnit(pl.units).toUpperCase()}</div><div class="num" id="speed">—</div></div>` : ""}
           </div>
           <button class="pill mini" id="mini-pill" hidden aria-label="Hide scoreboard"></button>
           <button class="icon-btn" id="board-btn" aria-label="Minimize scoreboard">–</button>
@@ -272,9 +368,19 @@ async function live(source: "camera" | "sample") {
     if (ev.kind === "rep" && ev.rep) {
       const eng = session.engine;
       const n = eng.reps.length;
-      $("reps").textContent = String(n);
+      $("reps").textContent = goal ? `${n}/${goal}` : String(n);
       $("score").textContent = fmt(ev.rep.score);
+      const spd = handSpeed(ev.rep.peak_speed, opts.player!, profiles.player, pl.units);
+      if (spd != null) $("speed").textContent = fmt(spd);
       $("mini-pill").textContent = `${n} · ${fmt(ev.rep.score)}`;
+      if (goal && n >= goal && !goalSaid) {
+        goalSaid = true;
+        $("board").classList.add("done");
+        note(`Goal reached: ${goal} reps. Keep going or end the session.`);
+        lastSpoken = -1e9;
+        speak("Goal reached");
+        lastSpoken = performance.now();
+      }
       navigator.vibrate?.(40);
       const frames = session instanceof CameraSession ? session.frames : [];
       const card = buildCard(eng, ev.rep, n - 1, frames, aspectNow, mirrored);
@@ -286,6 +392,8 @@ async function live(source: "camera" | "sample") {
         $("card").hidden = true;
         if (pref("sayNice", false)) speak("Nice");
       }
+    } else if (ev.kind === "rejected" && ev.reason === "other_stroke" && drill?.types) {
+      note(`Not counted: this drill only counts ${drill.types.join(" and ")}s`);
     } else if (ev.kind === "rejected" && ["bad_pattern", "too_slow", "too_small", "one_way", "bad_start", "not_high_enough"].includes(ev.reason)) {
       note(`Not counted: ${REJECT_LABEL[ev.reason] ?? ev.reason}`);
     }
@@ -365,7 +473,8 @@ async function live(source: "camera" | "sample") {
     const summary = summarize(opts.sport, eng.reps, eng.rejected, eng.profile.metrics, profiles.scoring, eng.activeS, eng.passiveS);
     const rec: StoredSession = {
       id: crypto.randomUUID?.() ?? String(Date.now()), sport: opts.sport, view: opts.view, focus: opts.focus,
-      training: setup.training, handedness: opts.handedness, source, started_at: new Date().toISOString(),
+      training: setup.training, handedness: opts.handedness, drill: setup.drill, level: pl.level, height_cm: pl.height_cm,
+      source, started_at: new Date().toISOString(),
       duration_s: duration, summary, reps: eng.reps,
     };
     go(() => summaryScreen(rec, source === "camera" && eng.reps.length > 0, cards));
@@ -415,23 +524,37 @@ function openFix(d: HTMLDialogElement, sport: string, card: FixCard) {
 
 // ---------------------------------------------------------------- summary
 function metricRows(s: StoredSession) {
-  const prof = sportProfile(s.sport, s.view);
+  const prof = sessionProfile(s.sport, s.view, s.drill, s);
+  const pl = player();
+  const real = (v: number, unit: string) => {
+    const r = unit === "torso" ? torsoToReal(v, { height_cm: s.height_cm }, profiles.player, pl.units) : null;
+    return r ? ` <span class="muted small">(${r})</span>` : "";
+  };
   const mainType = Object.entries(s.summary.types).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
   return prof.metrics
     .filter((m: { id: string }) => s.summary.metrics[m.id])
-    .map((m: { id: string; label: string; unit: string }) => {
+    .sort((a: { focus?: boolean }, b: { focus?: boolean }) => Number(!!b.focus) - Number(!!a.focus))
+    .map((m: { id: string; label: string; unit: string; focus?: boolean }) => {
       const v = s.summary.metrics[m.id];
       const tgt = targetFor(m, mainType);
       const d = m.unit === "deg" || m.unit === "s" ? (m.unit === "s" ? 2 : 0) : 2;
       const u = UNIT[m.unit] ?? "";
-      return `<tr><td>${esc(m.label)}</td><td>${fmt(v.mean, d)}${u}</td><td class="muted">${tgt ? fmt(tgt[0], d) + u : "—"}</td>
+      return `<tr><td>${esc(m.label)}${m.focus ? ' <span class="tag">focus</span>' : ""}</td><td>${fmt(v.mean, d)}${u}${real(v.mean, m.unit)}</td><td class="muted">${tgt ? fmt(tgt[0], d) + u : "—"}</td>
         <td><div class="bar"><span style="width:${Math.max(3, v.score)}%" class="${v.score >= 75 ? "ok" : v.score >= 50 ? "mid" : "low"}"></span></div></td></tr>`;
     }).join("");
 }
 
 async function summaryScreen(s: StoredSession, save: boolean, cards: FixCard[] = []) {
-  const prof = sportProfile(s.sport, s.view);
-  const previous = (await listSessions()).filter((x) => x.sport === s.sport && x.summary.score != null);
+  const prof = sessionProfile(s.sport, s.view, s.drill, s);
+  const pl = player();
+  const drill = findDrill(profiles.sports[s.sport], s.drill);
+  const all = (await listSessions()).filter((x) => x.sport === s.sport && x.summary.score != null && x.id !== s.id);
+  const previous = all;
+  const sameDrill = drill ? all.filter((x) => x.drill === s.drill) : [];
+  const drillBest = sameDrill.length ? Math.max(...sameDrill.map((x) => x.summary.score!)) : null;
+  const speeds = s.reps.map((r) => handSpeed(r.peak_speed, { height_cm: s.height_cm }, profiles.player, pl.units))
+    .filter((v): v is number => v != null);
+  const goal = drill?.goal_reps ?? null;
   if (save) await saveSession(s);
   const prevScores = previous.slice(0, 5).map((x) => x.summary.score!);
   const prevAvg = prevScores.length ? prevScores.reduce((a, b) => a + b, 0) / prevScores.length : null;
@@ -443,14 +566,20 @@ async function summaryScreen(s: StoredSession, save: boolean, cards: FixCard[] =
   app.innerHTML = `
   <main class="page">
     <h1>${ICONS[s.sport]} Session summary</h1>
+    <p class="muted">${drill ? `${esc(drill.label)} · ` : ""}${s.level ? `scored as ${esc(profiles.player.levels[s.level]?.label ?? s.level)}` : ""}</p>
     ${s.source === "sample" ? `<p class="notice">This was a sample recording, so it isn't saved to your history.</p>` : ""}
     ${!save && s.source === "camera" ? `<p class="notice">No reps were counted, so nothing was saved. Make sure your whole body is in view and swing at full speed.</p>` : ""}
     <section class="stats">
       <div class="stat big"><div class="num">${fmt(sc)}</div><div class="lbl">Session score</div></div>
-      <div class="stat"><div class="num">${s.summary.rep_count}</div><div class="lbl">Reps counted</div></div>
+      <div class="stat"><div class="num">${s.summary.rep_count}${goal ? `<span class="of">/${goal}</span>` : ""}</div><div class="lbl">${goal ? (s.summary.rep_count >= goal ? "Goal reached ✓" : "Reps of goal") : "Reps counted"}</div></div>
       <div class="stat"><div class="num">${fmt(s.summary.form_score)}</div><div class="lbl">Form</div></div>
       <div class="stat"><div class="num">${fmt(s.summary.consistency)}</div><div class="lbl">Consistency</div></div>
     </section>
+    ${speeds.length ? `<p class="speed">Hand speed: <strong>${fmt(speeds.reduce((a, b) => a + b, 0) / speeds.length)} ${speedUnit(pl.units)}</strong> average,
+      <strong>${fmt(Math.max(...speeds))}</strong> fastest <span class="muted small">(estimated from your height; the camera can't see motion toward it)</span></p>` : ""}
+    ${drill && sc != null && save ? `<p class="compare ${drillBest == null || sc > drillBest ? "good" : ""}">${drillBest == null
+      ? `First ${esc(drill.label)} session: this is your score to beat.`
+      : sc > drillBest ? `New ${esc(drill.label)} personal best (previous ${fmt(drillBest)})!` : `${esc(drill.label)} best: ${fmt(drillBest)}`}</p>` : ""}
     ${delta != null ? `<p class="compare ${delta >= 0 ? "good" : "bad"}">${delta >= 0 ? "▲" : "▼"} ${fmt(Math.abs(delta), 1)} vs your last ${prevScores.length} session average (${fmt(prevAvg, 1)})${best != null && sc! > best ? " · new personal best!" : ""}</p>` : ""}
     ${checkpoint ? `<section class="card checkpoint"><h3>🏁 Checkpoint: ${count} ${esc(profiles.sports[s.sport].label)} sessions</h3>
       <p>${checkpointText(previous, s)}</p></section>` : ""}
@@ -458,10 +587,10 @@ async function summaryScreen(s: StoredSession, save: boolean, cards: FixCard[] =
       const info = cueInfo(s.sport, c);
       return `<details><summary>${esc(c)}</summary>${info ? `<p>${esc(info.meaning)}</p><p><strong class="good">Aim for:</strong> ${esc(info.correct_motion)}</p>` : ""}</details>`;
     }).join("")}</section>` : ""}
-    ${Object.keys(s.summary.metrics).length ? `<section class="card"><h3>Your averages vs pro reference</h3>
-      <div class="scroll"><table><thead><tr><th>Metric</th><th>You</th><th>Pro</th><th>Score</th></tr></thead>
+    ${Object.keys(s.summary.metrics).length ? `<section class="card"><h3>Your averages vs target</h3>
+      <div class="scroll"><table><thead><tr><th>Metric</th><th>You</th><th>Target</th><th>Score</th></tr></thead>
       <tbody>${metricRows(s)}</tbody></table></div>
-      <p class="muted small">Distances are measured in your own torso lengths (shoulders to hips), so they work at any height or camera distance.</p></section>` : ""}
+      <p class="muted small">Distances are measured in your own torso lengths (shoulders to hips), so they work at any height or camera distance${s.height_cm ? "; the converted values use your height" : ""}. Targets follow your level${s.drill ? " and the drill's focus" : ""}.</p></section>` : ""}
     ${s.reps.length ? `<section class="card"><h3>Reps</h3><ol class="reps">${s.reps.map((r: Rep, i: number) =>
       `<li><span class="rs">${fmt(r.score)}</span> <span class="muted">${esc(r.type)}</span> ${r.cues[0] ? `· ${esc(shortLabel(prof, r.cues[0]))}` : ""}
         ${cards.some((c) => c.repIndex === i) ? `<button class="btn link small" data-card="${i}">See the fix</button>` : ""}</li>`).join("")}</ol></section>` : ""}
@@ -506,7 +635,7 @@ async function history() {
       <p><strong>${fmt(x.avg, 1)}</strong> average · best ${fmt(x.best)}<br><span class="muted small">${x.n} sessions · ${x.reps} reps</span></p>
       ${sparkline(sessions.filter((s) => s.sport === x.sp).map((s) => s.summary.score ?? 0).reverse())}</div>`).join("")}</section>` : `<p class="muted">No sessions yet. Finish a camera session with at least one counted rep and it shows up here.</p>`}
     ${sessions.length ? `<section class="card"><ul class="history">${sessions.map((s) => `<li>
-        <span>${ICONS[s.sport]} <strong>${fmt(s.summary.score)}</strong> · ${s.summary.rep_count} reps${s.sport === "tennis" ? ` · ${VIEW_LABEL[s.view]} view` : ""}</span>
+        <span>${ICONS[s.sport]} <strong>${fmt(s.summary.score)}</strong> · ${s.summary.rep_count} reps${s.drill ? ` · ${esc(findDrill(profiles.sports[s.sport], s.drill)?.label ?? s.drill)}` : ""}${s.sport === "tennis" ? ` · ${VIEW_LABEL[s.view]} view` : ""}</span>
         <span class="muted small">${new Date(s.started_at).toLocaleString()}</span>
         <button class="btn link small" data-del="${s.id}" aria-label="Delete session">Delete</button></li>`).join("")}</ul></section>
       <div class="row gap"><button class="btn ghost" id="json">Export JSON</button><button class="btn ghost" id="csv">Export CSV</button>
@@ -549,10 +678,10 @@ function sparkline(vals: number[]) {
 }
 
 function toCsv(sessions: StoredSession[]) {
-  const rows = [["started_at", "sport", "view", "reps", "score", "form", "consistency", "duration_s", "top_cue"]];
+  const rows = [["started_at", "sport", "view", "drill", "level", "height_cm", "reps", "score", "form", "consistency", "duration_s", "top_cue"]];
   for (const s of sessions) {
     const q: Summary = s.summary;
-    rows.push([s.started_at, s.sport, s.view, String(q.rep_count), fmt(q.score, 1), fmt(q.form_score, 1), fmt(q.consistency, 1),
+    rows.push([s.started_at, s.sport, s.view, s.drill ?? "", s.level ?? "", s.height_cm ? fmt(s.height_cm) : "", String(q.rep_count), fmt(q.score, 1), fmt(q.form_score, 1), fmt(q.consistency, 1),
                fmt(s.duration_s, 0), q.top_cues[0] ?? ""]);
   }
   return rows.map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(",")).join("\n");

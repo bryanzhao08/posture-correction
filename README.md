@@ -76,6 +76,26 @@ flowchart LR
 Knee angle is deliberately not used: facing the camera, knees bend toward the lens and look
 straight in 2D. Hip drop and stance height are used instead.
 
+### Player profile and drills
+
+Optional, in Settings (iPhone) or on the home screen (web). Without a profile the engine scores exactly
+as before. All of it lives in `shared/sport_profiles.json` (`player`, per-sport `drills`) and is applied
+by `personalize` in the Python, Swift and TypeScript engines, which the parity tests keep identical.
+
+- **Level** (Beginner, Intermediate, Advanced, Pro) scales every metric's tolerance and spread. Advanced
+  is the fitted pro range; Beginner is about twice as forgiving; Pro is tighter than the pros.
+- **Height** turns torso-length distances into cm or inches, estimates **hand speed** (mph or km/h) for
+  every rep, and says how far away to put the phone. It changes scoring only where a metric has a
+  `height_shift`: shorter basketball players are expected to use more leg drive. Height stays on the
+  device; level and drill are saved with each session.
+- **Drills** (5 per sport, 9 for tennis): e.g. golf *Tempo* and *Quiet head*, basketball *Form shooting*,
+  tennis *Forehands only* and *Serve*, pickleball *Dinks & resets*. A drill multiplies the weights of its
+  focus metrics, puts their cues first, can limit counting to one stroke type (other strokes are
+  ignored as `other_stroke`), and sets a rep goal shown on the scoreboard. Personal bests are kept per drill.
+
+Drill weightings and the height shift are coaching priors, not fitted from data; validate them with
+real recordings before relying on them.
+
 ## Validation (verification batch, data the fit never saw)
 
 Full report: [`ml/reports/validation.md`](ml/reports/validation.md).
@@ -111,7 +131,8 @@ Honest limits:
 ## Repository layout
 
 ```
-shared/sport_profiles.json   thresholds, gates and pro reference ranges (single source of truth)
+shared/sport_profiles.json   thresholds, gates, pro reference ranges, levels and drills (single source of truth)
+ml/formcoach/personalize.py  player level / height / drill adjustments (ported to Swift and TypeScript)
 ml/formcoach/                Python reference engine (engine, sports, scoring, synthetic data)
 ml/datasets.py               GolfDB / THETIS / SPL loaders
 ml/extract_pose.py           MediaPipe pose extraction from video

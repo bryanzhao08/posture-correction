@@ -9,6 +9,9 @@ struct SettingsView: View {
     @AppStorage("orangeMarkers.tennis") private var tennisMarkers = false
     @AppStorage("orangeMarkers.pickleball") private var pickleballMarkers = false
     @State private var handedness: Handedness = .right
+    @AppStorage(PlayerSettings.heightKey) private var heightCm = 0.0
+    @AppStorage(PlayerSettings.levelKey) private var level = ""
+    @AppStorage(PlayerSettings.metricKey) private var metric = Locale.current.measurementSystem != .us
     @State private var emailReports = true
     @State private var spokenCues = true
     @AppStorage("sayNice") private var sayNice = false
@@ -28,6 +31,20 @@ struct SettingsView: View {
                 Section("Account") {
                     Text(state.user?.name ?? "")
                     Text(state.user?.email ?? "").foregroundStyle(.secondary)
+                }
+                if let config = state.profiles?.player {
+                    Section {
+                        HeightPicker(heightCm: $heightCm, metric: metric, config: config)
+                        Picker("Level", selection: $level) {
+                            ForEach(config.levelOrder, id: \.self) { Text(config.levels[$0]!.label).tag($0) }
+                        }.accessibilityIdentifier("player.level")
+                        Picker("Units", selection: $metric) {
+                            Text("ft · mph").tag(false)
+                            Text("cm · km/h").tag(true)
+                        }.pickerStyle(.segmented)
+                    } header: { Text("Your profile") } footer: {
+                        Text((config.levels[level]?.about ?? "") + " Height stays on this iPhone. It turns distances into \(metric ? "cm" : "inches"), estimates hand speed and adjusts how much leg drive a basketball shot needs.")
+                    }.onAppear { if config.levels[level] == nil { level = config.defaultLevel } }
                 }
                 Section("Practice preferences") {
                     Picker("Handedness", selection: $handedness) {

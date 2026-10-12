@@ -32,7 +32,7 @@ export function scoreRep(metrics: Metrics, repType: string, specs: Spec[], scori
   const scores: Record<string, number> = {};
   let wsum = 0.0;
   let total = 0.0;
-  const worst: [number, string][] = [];
+  const worst: [number, number, string][] = [];
   for (const spec of specs) {
     const v = metrics[spec.id];
     if (v == null) continue;
@@ -44,12 +44,13 @@ export function scoreRep(metrics: Metrics, repType: string, specs: Spec[], scori
     if (s < 75.0) {
       const mean = targetFor(spec, repType)![0];
       const cue = v > mean ? spec.cue_high : spec.cue_low;
-      if (cue) worst.push([s, cue]);
+      // cues for the metrics the drill is about come first
+      if (cue) worst.push([spec.focus ? 0 : 1, s, cue]);
     }
   }
   if (wsum === 0) return { scores, total: null as number | null, cues: [] as string[] };
-  worst.sort((a, b) => a[0] - b[0]);
-  return { scores, total: total / wsum as number | null, cues: worst.slice(0, 2).map((w) => w[1]) };
+  worst.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  return { scores, total: total / wsum as number | null, cues: worst.slice(0, 2).map((w) => w[2]) };
 }
 
 export interface RepLike {

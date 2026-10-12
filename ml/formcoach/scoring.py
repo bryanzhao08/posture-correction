@@ -50,11 +50,12 @@ def score_rep(metrics: dict, rep_type: str, specs: list, scoring: dict):
             mean = target_for(spec, rep_type)[0]
             cue = spec["cue_high"] if v > mean else spec["cue_low"]
             if cue:
-                worst.append((s, cue))
+                # cues for the metrics the drill is about come first
+                worst.append((0 if spec.get("focus") else 1, s, cue))
     if wsum == 0:
         return scores, None, []
-    worst.sort(key=lambda x: x[0])
-    return scores, total / wsum, [c for _, c in worst[:2]]
+    worst.sort(key=lambda x: (x[0], x[1]))
+    return scores, total / wsum, [c for _, _, c in worst[:2]]
 
 
 def summarize(sport: str, reps: list, rejected: dict, specs: list, scoring: dict,

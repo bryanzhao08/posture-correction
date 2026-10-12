@@ -152,7 +152,58 @@
       ],
       "pattern": {
         "min_valley": 0.4
-      }
+      },
+      "drills": [
+        {
+          "id": "full_swing",
+          "label": "Full swing",
+          "about": "Every metric, weighted as fitted on pro swings.",
+          "goal_reps": 20
+        },
+        {
+          "id": "tempo",
+          "label": "Tempo",
+          "about": "Smooth 3:1 rhythm: a slow takeaway and an unhurried transition.",
+          "goal_reps": 15,
+          "emphasis": {
+            "tempo_ratio": 3.0,
+            "lead_arm_top": 0.5
+          },
+          "tip": "Count \"one-two-three\" on the way back and \"four\" at impact."
+        },
+        {
+          "id": "quiet_head",
+          "label": "Quiet head",
+          "about": "Keep your head still and level from address through impact.",
+          "goal_reps": 15,
+          "emphasis": {
+            "head_sway": 3.0,
+            "head_lift": 3.0,
+            "hip_sway": 1.5
+          },
+          "tip": "Pick a spot on the ball and keep your eyes on it until after impact."
+        },
+        {
+          "id": "turn",
+          "label": "Turn, don't sway",
+          "about": "Rotate around your spine instead of sliding off the ball.",
+          "goal_reps": 15,
+          "emphasis": {
+            "shoulder_turn": 3.0,
+            "hip_sway": 3.0
+          }
+        },
+        {
+          "id": "balance",
+          "label": "Hold your finish",
+          "about": "Finish tall over your lead foot and hold it for two seconds.",
+          "goal_reps": 15,
+          "emphasis": {
+            "finish_balance": 3.0,
+            "head_lift": 1.5
+          }
+        }
+      ]
     },
     "basketball": {
       "label": "Basketball shot",
@@ -192,7 +243,12 @@
           "one_sided": "low",
           "source": "SPL free throws (n=388)",
           "cue_low": "Use your legs. Dip and rise so the shot starts from the ground.",
-          "cue_high": ""
+          "cue_high": "",
+          "height_shift": {
+            "per_10cm": 0.03,
+            "max_steps": 4,
+            "about": "Coaching prior: +0.03 torso of expected leg drive per 10 cm under 175 cm."
+          }
         },
         {
           "id": "elbow_extension",
@@ -303,7 +359,63 @@
         "min_extension_speed": 300.0,
         "min_release_elbow": 140.0,
         "max_hand_gap": 0.9
-      }
+      },
+      "drills": [
+        {
+          "id": "free_throws",
+          "label": "Free throws",
+          "about": "Every metric, weighted as fitted on free throws.",
+          "goal_reps": 25
+        },
+        {
+          "id": "form_shooting",
+          "label": "Form shooting",
+          "about": "One-hand form shots close to the rim: elbow in, straight up, hold the finish.",
+          "goal_reps": 30,
+          "emphasis": {
+            "elbow_flare": 3.0,
+            "elbow_extension": 2.0,
+            "arm_verticality": 2.5,
+            "follow_through_hold": 2.0,
+            "guide_hand_gap": 2.0,
+            "leg_drive": 0.3,
+            "shot_rhythm": 0.3
+          },
+          "tip": "Stand one step from the rim and shoot with your shooting hand only."
+        },
+        {
+          "id": "legs",
+          "label": "Legs into the shot",
+          "about": "Dip and drive up in one motion so the power comes from your legs.",
+          "goal_reps": 20,
+          "emphasis": {
+            "leg_drive": 3.0,
+            "shot_rhythm": 2.5,
+            "lateral_drift": 1.5
+          }
+        },
+        {
+          "id": "follow_through",
+          "label": "Hold the follow-through",
+          "about": "Snap the wrist and hold the gooseneck until the ball lands.",
+          "goal_reps": 20,
+          "emphasis": {
+            "follow_through_hold": 3.0,
+            "arm_verticality": 2.0,
+            "release_height": 1.5
+          }
+        },
+        {
+          "id": "straight_up",
+          "label": "Straight up and down",
+          "about": "Land where you took off: no fading or drifting sideways.",
+          "goal_reps": 20,
+          "emphasis": {
+            "lateral_drift": 3.0,
+            "arm_verticality": 1.5
+          }
+        }
+      ]
     },
     "tennis": {
       "label": "Tennis",
@@ -903,6 +1015,147 @@
           ],
           "why": "Face-on, like a player across the net, shows your ready position and compact swing."
         }
+      ],
+      "drills": [
+        {
+          "id": "rally",
+          "label": "Rally",
+          "about": "Any stroke. Every metric the camera can see counts.",
+          "goal_reps": 30,
+          "trainings": [
+            "groundstrokes",
+            "contact",
+            "volleys"
+          ]
+        },
+        {
+          "id": "forehands",
+          "label": "Forehands only",
+          "about": "Feed or rally to your forehand. Backhands are not counted.",
+          "goal_reps": 25,
+          "types": [
+            "forehand"
+          ],
+          "trainings": [
+            "groundstrokes",
+            "contact",
+            "volleys"
+          ]
+        },
+        {
+          "id": "backhands",
+          "label": "Backhands only",
+          "about": "Feed or rally to your backhand. Forehands are not counted.",
+          "goal_reps": 25,
+          "types": [
+            "backhand"
+          ],
+          "trainings": [
+            "groundstrokes",
+            "contact",
+            "volleys"
+          ]
+        },
+        {
+          "id": "unit_turn",
+          "label": "Unit turn",
+          "about": "Turn your shoulders early as one unit before the racket goes back.",
+          "goal_reps": 20,
+          "types": [
+            "forehand",
+            "backhand"
+          ],
+          "emphasis": {
+            "shoulder_turn": 3.0,
+            "spacing": 1.5,
+            "off_hand_reach": 2.0
+          },
+          "trainings": [
+            "groundstrokes"
+          ]
+        },
+        {
+          "id": "finish",
+          "label": "Finish over the shoulder",
+          "about": "Swing through to a full finish with the elbow up by your nose.",
+          "goal_reps": 20,
+          "types": [
+            "forehand",
+            "backhand"
+          ],
+          "emphasis": {
+            "finish_height": 3.0,
+            "elbow_finish": 3.0,
+            "swing_through": 2.0
+          },
+          "trainings": [
+            "groundstrokes"
+          ]
+        },
+        {
+          "id": "weight_transfer",
+          "label": "Weight transfer",
+          "about": "Load the back leg, then move into the ball and hit it out in front.",
+          "goal_reps": 20,
+          "types": [
+            "forehand",
+            "backhand"
+          ],
+          "emphasis": {
+            "back_load": 3.0,
+            "weight_shift": 3.0,
+            "contact_front": 2.0
+          },
+          "trainings": [
+            "contact"
+          ]
+        },
+        {
+          "id": "serve",
+          "label": "Serve",
+          "about": "Full serves. Every serve metric counts.",
+          "goal_reps": 20,
+          "types": [
+            "serve"
+          ],
+          "trainings": [
+            "serve"
+          ]
+        },
+        {
+          "id": "serve_reach",
+          "label": "Reach up on the serve",
+          "about": "Drive up and hit at full extension, as high as you can reach.",
+          "goal_reps": 20,
+          "types": [
+            "serve"
+          ],
+          "emphasis": {
+            "contact_arm": 3.0,
+            "contact_height": 3.0
+          },
+          "trainings": [
+            "serve"
+          ]
+        },
+        {
+          "id": "volleys",
+          "label": "Compact volleys",
+          "about": "Stay low with a short punch: no big backswing.",
+          "goal_reps": 25,
+          "types": [
+            "forehand",
+            "backhand"
+          ],
+          "emphasis": {
+            "stance_height": 3.0,
+            "head_stability": 2.0,
+            "swing_tempo": 1.5
+          },
+          "trainings": [
+            "volleys"
+          ]
+        }
       ]
     },
     "pickleball": {
@@ -1051,6 +1304,99 @@
         "min_overhead_drop": 0.8,
         "min_cross": 0.0,
         "max_mirror": 0.6
+      },
+      "drills": [
+        {
+          "id": "rally",
+          "label": "Rally",
+          "about": "Any stroke. Every metric counts.",
+          "goal_reps": 30
+        },
+        {
+          "id": "dinks",
+          "label": "Dinks & resets",
+          "about": "Soft, low strokes from the kitchen line with almost no backswing.",
+          "goal_reps": 30,
+          "types": [
+            "forehand",
+            "backhand"
+          ],
+          "emphasis": {
+            "stance_height": 2.5,
+            "backswing_size": 3.0,
+            "ready_height": 2.0,
+            "swing_through": 0.5
+          },
+          "tip": "Bend your knees, not your back, and lift the ball with your shoulder."
+        },
+        {
+          "id": "drives",
+          "label": "Drives",
+          "about": "Full groundstrokes from the baseline: contact in front and swing through.",
+          "goal_reps": 25,
+          "types": [
+            "forehand",
+            "backhand"
+          ],
+          "emphasis": {
+            "swing_through": 2.5,
+            "contact_height": 2.0,
+            "head_stability": 1.5
+          }
+        },
+        {
+          "id": "ready",
+          "label": "Paddle up",
+          "about": "Return to a paddle-up ready position between every shot.",
+          "goal_reps": 25,
+          "emphasis": {
+            "ready_height": 3.0,
+            "head_stability": 1.5
+          }
+        },
+        {
+          "id": "overheads",
+          "label": "Overheads",
+          "about": "Smashes at full extension.",
+          "goal_reps": 15,
+          "types": [
+            "overhead"
+          ]
+        }
+      ]
+    }
+  },
+  "player": {
+    "about": "Optional player profile. Without one the engine scores against the fitted pro ranges exactly as before.",
+    "reference_height_cm": 175,
+    "min_height_cm": 100,
+    "max_height_cm": 230,
+    "torso_fraction": 0.3,
+    "default_level": "intermediate",
+    "levels": {
+      "beginner": {
+        "label": "Beginner",
+        "about": "New to the sport or coming back after a long break.",
+        "tol_scale": 2.0,
+        "std_scale": 1.5
+      },
+      "intermediate": {
+        "label": "Intermediate",
+        "about": "Play regularly; the basics are in place.",
+        "tol_scale": 1.5,
+        "std_scale": 1.25
+      },
+      "advanced": {
+        "label": "Advanced",
+        "about": "Competitive player. Scored against the full pro ranges.",
+        "tol_scale": 1.0,
+        "std_scale": 1.0
+      },
+      "pro": {
+        "label": "Pro / coach",
+        "about": "Tighter than the pro ranges: only near-textbook reps score high.",
+        "tol_scale": 0.75,
+        "std_scale": 0.9
       }
     }
   }

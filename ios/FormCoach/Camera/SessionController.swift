@@ -13,6 +13,9 @@ final class SessionController: ObservableObject {
     let view: String?
     let focus: String?
     let training: String?
+    let player: Player?
+    let drill: Drill?
+    let playerConfig: PlayerConfig?
     let jointNames: [String]
     private let handedness: Handedness
     private let startedAt = Date()
@@ -46,15 +49,20 @@ final class SessionController: ObservableObject {
     }
 
     init(profiles: Profiles, sport: Sport, profile: SportProfile, handedness: Handedness,
-         spokenCues: Bool, sharePose: Bool, view: String? = nil, focus: String? = nil, training: String? = nil) {
+         spokenCues: Bool, sharePose: Bool, view: String? = nil, focus: String? = nil, training: String? = nil,
+         player: Player? = nil, drill: String? = nil) {
         self.sport = sport
+        self.player = player
+        self.drill = profile.drills?.first { $0.id == drill }
+        playerConfig = profiles.player
         self.view = view
         self.focus = focus
         self.training = training
         self.profile = profile.effective(for: view)
         self.spokenCues = spokenCues
         jointNames = profiles.joints
-        camera = CameraManager(profiles: profiles, sport: sport.rawValue, handedness: handedness, collectPose: sharePose, view: view, focus: focus)
+        camera = CameraManager(profiles: profiles, sport: sport.rawValue, handedness: handedness, collectPose: sharePose, view: view, focus: focus,
+                               player: player, drill: drill)
         #if DEBUG
         self.handedness = camera.isReplaying ? camera.replayHandedness : handedness
         camera.onReplayFinished = { [weak self] in
@@ -103,12 +111,26 @@ final class SessionController: ObservableObject {
         awake = true
         camera.start()
     }
+    var goal: Int? { drill?.goalReps }
+    private var goalAnnounced = false
+    /// Hand speed of a rep as display text, when the player's height is known.
+    func speedText(_ rep: Rep?) -> String? {
+        guard let p = player, p.heightCm != nil else { return nil }
+        guard let rep = rep, let v = PlayerSettings.handSpeed(rep, player: p, config: playerConfig, metric: PlayerSettings.metric) else { return "—" }
+        return String(Int(v.rounded()))
+    }
     private func feedback(_ rep: Rep) {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         AudioServicesPlaySystemSound(1057)
         let now = ProcessInfo.processInfo.systemUptime
-        let phrase = rep.cues.first.map { profile.shortLabel(forCue: $0) }
+        var phrase = rep.cues.first.map { profile.shortLabel(forCue: $0) }
             ?? (UserDefaults.standard.bool(forKey: "sayNice") ? "Nice" : nil)
+        if let goal = goal, !goalAnnounced, (frame?.repCount ?? 0) >= goal {
+            goalAnnounced = true
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            phrase = "Goal reached"
+            lastSpokenAt = -Double.infinity
+        }
         if spokenCues, let phrase = phrase, now-lastSpokenAt >= 6, !speaker.isSpeaking {
             lastSpokenAt = now
             let utterance = AVSpeechUtterance(string: phrase)
@@ -131,6 +153,7 @@ final class SessionController: ObservableObject {
         guard let snapshot = snapshot else { throw APIError(message: "The session is still finishing.") }
         var summary = snapshot.summary
         summary.view = view; summary.focus = focus; summary.training = training
+        summary.drill = drill?.id; summary.level = player?.level
         let payload = SessionIn(clientID: clientID, sport: sport.rawValue, handedness: handedness,
             startedAt: Display.timestamp(startedAt), durationS: duration, summary: summary,
             reps: snapshot.reps, appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0",

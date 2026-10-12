@@ -25,6 +25,7 @@ public struct Profiles: Decodable {
     public let sports: [String: SportProfile]
     let preprocess: Preprocess
     let scoring: ScoringConfig
+    public let player: PlayerConfig?
 
     public static func load(from data: Data) throws -> Profiles {
         try JSONDecoder().decode(Profiles.self, from: data)
@@ -77,8 +78,11 @@ public struct SportProfile: Decodable {
     public let defaultView: String?
     public let views: [String: CameraViewProfile]?
     public let training: [TrainingType]?
+    public let drills: [Drill]?
+    /// The drill this profile was personalised for (set by `personalize`, never decoded).
+    public internal(set) var drill: Drill? = nil
     enum CodingKeys: String, CodingKey {
-        case label, camera, metrics, analyzer, tracker, detect, gates, pattern, views, training
+        case label, camera, metrics, analyzer, tracker, detect, gates, pattern, views, training, drills
         case defaultView = "default_view"
     }
     public func camera(for view: String) -> String { views?[view]?.camera ?? camera }
@@ -105,19 +109,27 @@ public struct SportProfile: Decodable {
 }
 
 struct TypeTarget: Decodable {
-    let mean, std, tol: Double
+    var mean, std, tol: Double
+}
+
+struct HeightShift: Decodable {
+    let per10cm, maxSteps: Double
+    enum CodingKeys: String, CodingKey { case per10cm = "per_10cm", maxSteps = "max_steps" }
 }
 
 public struct MetricSpec: Decodable {
     public let id: String
     public let label: String
     public let unit: String
-    public let mean: Double
-    public let std: Double
-    public let tol: Double
-    let weight: Double
+    public internal(set) var mean: Double
+    public internal(set) var std: Double
+    public internal(set) var tol: Double
+    public internal(set) var weight: Double
     let oneSided: String?
-    let byType: [String: TypeTarget?]?
+    var byType: [String: TypeTarget?]?
+    let heightShift: HeightShift?
+    /// True when the selected drill emphasises this metric; its cues are given first.
+    public internal(set) var focus = false
     let onlyTypes: [String]?
     public let cueLow: String
     public let cueHigh: String
@@ -126,7 +138,7 @@ public struct MetricSpec: Decodable {
     enum CodingKeys: String, CodingKey {
         case id, label, unit, mean, std, tol, weight
         case oneSided = "one_sided", byType = "by_type", cueLow = "cue_low", cueHigh = "cue_high"
-        case onlyTypes = "only_types"
+        case onlyTypes = "only_types", heightShift = "height_shift"
         case shortLow = "short_low", shortHigh = "short_high"
     }
 }
@@ -163,6 +175,8 @@ public struct SessionSummary: Codable {
     public var view: String? = nil
     public var focus: String? = nil
     public var training: String? = nil
+    public var drill: String? = nil
+    public var level: String? = nil
     public let sport: String
     public let repCount: Int
     public let rejected: [String: Int]
@@ -175,7 +189,7 @@ public struct SessionSummary: Codable {
     public let activeS: Double
     public let passiveS: Double
     enum CodingKeys: String, CodingKey {
-        case sport, rejected, types, score, consistency, metrics, view, focus, training
+        case sport, rejected, types, score, consistency, metrics, view, focus, training, drill, level
         case repCount = "rep_count", formScore = "form_score", topCues = "top_cues"
         case activeS = "active_s", passiveS = "passive_s"
     }

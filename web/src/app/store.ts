@@ -10,6 +10,9 @@ export interface StoredSession {
   focus: string | null;
   training: string | null;
   handedness: string;
+  drill?: string | null;        // drill id; missing on sessions saved before drills existed
+  level?: string | null;
+  height_cm?: number | null;
   source: "camera" | "sample";
   started_at: string;   // ISO time
   duration_s: number;

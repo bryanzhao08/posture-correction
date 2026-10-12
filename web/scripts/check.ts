@@ -60,9 +60,8 @@ for (const fx of fixtures) {
     if (JSON.stringify(r.cues) !== JSON.stringify(e.cues)) errs.push(`rep ${i} cues ${r.cues} vs ${e.cues}`);
   });
   sameMap(eng.rejected, exp.rejected, "rejected", errs);
-  // the Python fixture summarises with the sport's base metric list
-  const summ = summarize(fx.recording.sport, eng.reps, eng.rejected, profiles.sports[fx.recording.sport].metrics,
-                         profiles.scoring);
+  // the Python fixture summarises with the engine's (view- and player-adjusted) metric list
+  const summ = summarize(fx.recording.sport, eng.reps, eng.rejected, eng.profile.metrics, profiles.scoring);
   if (!sameNum(summ.score, exp.score)) errs.push(`session score web ${summ.score} vs python ${exp.score}`);
   if (errs.length) {
     failed++;

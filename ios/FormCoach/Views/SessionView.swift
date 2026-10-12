@@ -10,9 +10,10 @@ struct SessionFlow: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var controller: SessionController
     @State private var savedID: String?
-    init(profiles: Profiles, sport: Sport, profile: SportProfile, handedness: Handedness, spokenCues: Bool, sharePose: Bool, view: String? = nil, focus: String? = nil, training: String? = nil) {
+    init(profiles: Profiles, sport: Sport, profile: SportProfile, handedness: Handedness, spokenCues: Bool, sharePose: Bool, view: String? = nil, focus: String? = nil, training: String? = nil, player: Player? = nil, drill: String? = nil) {
         _controller = StateObject(wrappedValue: SessionController(profiles: profiles, sport: sport, profile: profile,
-            handedness: handedness, spokenCues: spokenCues, sharePose: sharePose, view: view, focus: focus, training: training))
+            handedness: handedness, spokenCues: spokenCues, sharePose: sharePose, view: view, focus: focus, training: training,
+            player: player, drill: drill))
     }
     var body: some View {
         Group {
@@ -96,9 +97,15 @@ struct SessionView: View {
                         }
                         if controller.frame?.started == true, scoreboardMode == "compact" {
                             HStack(spacing: 12) {
-                                scoreboardNumber("\(controller.frame?.repCount ?? 0)", label: "REPS")
+                                let reps = controller.frame?.repCount ?? 0
+                                scoreboardNumber(controller.goal.map { "\(reps)/\($0)" } ?? "\(reps)", label: "REPS")
+                                    .foregroundStyle(controller.goal.map { reps >= $0 } == true ? .green : .white)
                                 Rectangle().fill(.white.opacity(0.3)).frame(width: 1, height: repFontSize)
                                 scoreboardNumber(Display.score(controller.frame?.lastRep?.score), label: "SCORE")
+                                if let speed = controller.speedText(controller.frame?.lastRep) {
+                                    Rectangle().fill(.white.opacity(0.3)).frame(width: 1, height: repFontSize)
+                                    scoreboardNumber(speed, label: PlayerSettings.speedUnit(metric: PlayerSettings.metric).uppercased())
+                                }
                                 Button { changeScoreboard("mini") } label: { Image(systemName: "chevron.down") }
                                     .frame(width: 44, height: 44).accessibilityLabel("Minimize scoreboard")
                                     .accessibilityIdentifier("scoreboard.cycle")

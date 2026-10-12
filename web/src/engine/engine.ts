@@ -5,6 +5,7 @@
 // (x * aspect). Body-relative values are measured from the mid-hip in torso lengths.
 import { ANALYZERS, dist, mid, type Metrics } from "./sports.ts";
 import { scoreRep } from "./scoring.ts";
+import { personalize, type Drill, type Player } from "./personalize.ts";
 
 export type Pt = [number, number];
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -79,6 +80,7 @@ const alpha = (dt: number, tau: number) => (tau > 0 ? 1.0 - Math.exp(-dt / tau) 
 export class Engine implements Ctx {
   cfg: Profiles; scoring: Profiles; joints: string[]; sport: string; view: string; focus: string | null;
   profile: Profiles; det: Profiles; gates: Profiles; dom: string; off: string;
+  drill: Drill | null;
   state: EngineState = "no_person";
   buf: Sample[] = [];
   reps: Rep[] = [];
@@ -109,7 +111,7 @@ export class Engine implements Ctx {
   private peakT = 0.0;
 
   constructor(profiles: Profiles, sport: string, handedness = "right", view: string | null = null,
-              focus: string | null = null) {
+              focus: string | null = null, player: Player | null = null, drill: string | null = null) {
     this.cfg = profiles.preprocess;
     this.scoring = profiles.scoring;
     this.joints = profiles.joints;
@@ -117,7 +119,8 @@ export class Engine implements Ctx {
     const base = profiles.sports[sport];
     this.view = view || base.default_view || "front";
     this.focus = focus;
-    this.profile = effectiveProfile(base, this.view);
+    this.profile = personalize(effectiveProfile(base, this.view), profiles.player, player, drill);
+    this.drill = this.profile.drill ?? null;
     this.det = this.profile.detect;
     this.gates = this.profile.gates;
     this.dom = handedness === "right" ? "r" : "l";
@@ -313,6 +316,12 @@ export class Engine implements Ctx {
     const result = ANALYZERS[this.profile.analyzer](seg, this);
     if (result === null) return this.reject(t, "bad_pattern", stats);
     const [repType, ev, metrics] = result;
+    if (this.drill?.types?.length && !this.drill.types.includes(repType)) {
+      // a real stroke, just not the one being drilled: close off its frames like a rep
+      this.lastSegEndT = t;
+      this.cooldownUntil = t + this.det.refractory_ms / 1000.0;
+      return this.reject(t, "other_stroke", stats);
+    }
     const { scores, total, cues } = scoreRep(metrics, repType, this.profile.metrics, this.scoring);
     if (total === null) return this.reject(t, "no_metrics", stats);
     const rep: Rep = {
@@ -370,11 +379,14 @@ export interface Recording {
   aspect?: number;
   view?: string | null;
   focus?: string | null;
+  player?: Player | null;
+  drill?: string | null;
   frames: { t: number; j: Joint[] }[];
 }
 
 export function analyzeRecording(rec: Recording, profiles: Profiles) {
-  const eng = new Engine(profiles, rec.sport, rec.handedness ?? "right", rec.view ?? null, rec.focus ?? null);
+  const eng = new Engine(profiles, rec.sport, rec.handedness ?? "right", rec.view ?? null, rec.focus ?? null,
+                         rec.player ?? null, rec.drill ?? null);
   const events: EngineEvent[] = [];
   for (const fr of rec.frames) events.push(...eng.push(fr.t, fr.j, rec.aspect ?? 1.0));
   return { eng, events };

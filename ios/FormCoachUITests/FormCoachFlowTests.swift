@@ -298,6 +298,33 @@ final class FormCoachFlowTests: XCTestCase {
         close("rep.feedback.close")
     }
 
+    /// Height, level and a drill adapt the session: rep goal and hand speed live, level and focus in the summary.
+    func testDrillGoalHandSpeedAndLevel() {
+        app.terminate()
+        app.launchArguments += ["-player.heightCm", "180", "-player.level", "beginner", "-player.metric", "YES",
+                                "-drill.basketball", "form_shooting"]
+        app.launch()
+        register()
+        let basketball=app.buttons.containing(NSPredicate(format:"label CONTAINS 'Basketball'")).firstMatch
+        XCTAssertTrue(basketball.waitForExistence(timeout:20)); basketball.tap()
+        XCTAssertTrue(app.buttons["training.start"].waitForExistence(timeout:10))
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format:"label CONTAINS 'One-hand form shots'")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format:"label CONTAINS 'Goal 30 reps · scored as Beginner · height 180 cm'")).firstMatch.exists)
+        shot("drill-setup")
+        startPractice()
+        XCTAssertTrue(app.buttons["rep.feedback.card"].waitForExistence(timeout:40))
+        XCTAssertTrue(app.staticTexts["KM/H"].exists)
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format:"label ENDSWITH '/30'")).firstMatch.exists)
+        shot("drill-scoreboard")
+        XCTAssertTrue(app.staticTexts["Demo complete · tap End session"].waitForExistence(timeout:60))
+        app.buttons["End session"].tap()
+        XCTAssertTrue(app.navigationBars["Session summary"].waitForExistence(timeout:20))
+        XCTAssertTrue(app.staticTexts["Scored as Beginner"].waitForExistence(timeout:5))
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format:"label BEGINSWITH 'Hand speed'")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format:"label CONTAINS 'Form shooting'")).firstMatch.exists)
+        shot("drill-summary")
+    }
+
 }
 
 final class DemoCatalogCoverageTests: XCTestCase {

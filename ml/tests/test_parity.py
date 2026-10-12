@@ -1,5 +1,6 @@
 """The Swift engine (ios/FormCore) must produce the same reps, metrics and scores as this one."""
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -14,12 +15,21 @@ from tests.test_engine import CASES
 
 PKG = Path(__file__).resolve().parents[2] / "ios" / "FormCore"
 WEB = Path(__file__).resolve().parents[2] / "web"
+# SWIFT_SCRATCH redirects the Swift build directory (e.g. when ios/FormCore/.build is not writable)
+SCRATCH = Path(os.environ.get("SWIFT_SCRATCH") or PKG / ".build")
+
+
+def build_swift():
+    build = subprocess.run(["swift", "build", "-c", "release", "--package-path", str(PKG), "--scratch-path", str(SCRATCH)],
+                           capture_output=True, text=True)
+    assert build.returncode == 0, build.stderr[-4000:] + build.stdout[-4000:]
+    return SCRATCH / "release" / "formcore-check"
 
 
 def fixture(name, rec, profiles):
     eng = analyze_recording(rec, profiles)
     reps = [r.to_dict() for r in eng.reps]
-    summ = summarize(rec["sport"], reps, eng.rejected, profiles["sports"][rec["sport"]]["metrics"],
+    summ = summarize(rec["sport"], reps, eng.rejected, eng.profile["metrics"],
                      profiles["scoring"], eng.active_s, eng.passive_s)
     return {"name": name, "recording": rec,
             "expected": {"reps": reps, "rejected": eng.rejected, "score": summ["score"]}}
@@ -57,10 +67,7 @@ def view_samples(every=4):
 def test_swift_engine_matches_python(tmp_path):
     path = tmp_path / "fixtures.json"
     path.write_text(json.dumps(engine_fixtures()))
-    build = subprocess.run(["swift", "build", "-c", "release", "--package-path", str(PKG)],
-                           capture_output=True, text=True)
-    assert build.returncode == 0, build.stderr[-4000:] + build.stdout[-4000:]
-    exe = PKG / ".build" / "release" / "formcore-check"
+    exe = build_swift()
     run = subprocess.run([str(exe), str(path), str(PROFILES_PATH)], capture_output=True, text=True)
     print(run.stdout)
     assert run.returncode == 0, run.stdout[-6000:] + run.stderr[-2000:]
@@ -76,7 +83,24 @@ def engine_fixtures():
                               profiles))
     fx += [fixture(n, r, profiles) for n, r in real_samples()]
     fx += [fixture(n, r, profiles) for n, r in view_samples()]
+    fx += personalized_fixtures(profiles)
     return fx
+
+
+def personalized_fixtures(profiles):
+    """Every drill and level, plus heights that shift (and clamp) the height-adjusted metrics."""
+    out = []
+    levels = list(profiles["player"]["levels"])
+    heights = (None, 150.0, 175.0, 199.0, 230.0)
+    for name, (sport, script, _) in CASES.items():
+        if not name.endswith(("3_swings", "2_shots", "mixed", "dinks")):
+            continue
+        hand = "left" if name.startswith("left") else "right"
+        base = recording(sport, script, noise=0.003, seed=3, handedness=hand)
+        for i, d in enumerate(profiles["sports"][sport]["drills"]):
+            player = {"level": levels[i % len(levels)], "height_cm": heights[i % len(heights)]}
+            out.append(fixture(f"{name}-{d['id']}-{player['level']}", dict(base, drill=d["id"], player=player), profiles))
+    return out
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="Node.js not installed")
@@ -132,9 +156,7 @@ def test_web_corrections_match_python(tmp_path):
 def test_swift_corrections_match_python(tmp_path):
     path = tmp_path / "corrections.json"
     path.write_text(json.dumps(correction_fixtures()))
-    build = subprocess.run(["swift", "build", "-c", "release", "--package-path", str(PKG)], capture_output=True, text=True)
-    assert build.returncode == 0, build.stderr[-4000:]
-    run = subprocess.run([str(PKG / ".build" / "release" / "formcore-check"), "--corrections", str(path)],
+    run = subprocess.run([str(build_swift()), "--corrections", str(path)],
                          capture_output=True, text=True)
     print(run.stdout)
     assert run.returncode == 0, run.stdout[-6000:] + run.stderr[-2000:]
