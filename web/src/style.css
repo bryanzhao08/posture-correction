@@ -155,3 +155,6 @@ input[type="number"] { font: inherit; width: 5.5ch; background: var(--panel-2); 
 .board.done #reps { color: var(--good); }
 .stat .of { font-size: 0.5em; color: var(--muted); font-weight: 600; }
 .speed { margin: 4px 0 12px; }
+.sw.red { background: #ff5a5f; }
+.sw.green { background: #3ddc84; margin-left: 8px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 10px; }

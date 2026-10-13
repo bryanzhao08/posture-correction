@@ -22,6 +22,32 @@ struct RepCard: Identifiable {
     let metric: String?
     let frame: FeedbackFrame
     let corrected: [String: Point]?
+    /// The whole rep as recorded (red) and the same motion with the fix applied (green), for the replay.
+    var motion: [MotionFrame] = []
+}
+struct MotionFrame {
+    let t: Double
+    let pose: [String: Point]
+    let fix: [String: Point]?
+}
+
+/// Port of fixMotion in web/src/app/fixcard.ts: the recorded motion with the key-moment fix eased in and
+/// out. The correction's joint offsets grow from nothing at the start of the rep to full at the key moment,
+/// then ease off by the end, so a fix at the set point does not bend the arm at release.
+func fixMotion(_ frames: [(t: Double, pose: [String: Point])], keyPose: [String: Point]?, ghost: [String: Point]?,
+               tStart: Double, keyT: Double, tEnd: Double) -> [MotionFrame] {
+    func smooth(_ u: Double) -> Double { let c = max(0, min(1, u)); return c * c * (3 - 2 * c) }
+    return frames.map { f in
+        guard let keyPose = keyPose, let ghost = ghost else { return MotionFrame(t: f.t, pose: f.pose, fix: nil) }
+        let w = f.t <= keyT ? (keyT > tStart ? smooth((f.t - tStart) / (keyT - tStart)) : 1)
+                            : (tEnd > keyT ? 1 - smooth((f.t - keyT) / (tEnd - keyT)) : 1)
+        var fix: [String: Point] = [:]
+        for (k, p) in f.pose {
+            if let g = ghost[k], let kp = keyPose[k] { fix[k] = Point(x: p.x + w * (g.x - kp.x), y: p.y + w * (g.y - kp.y)) }
+            else { fix[k] = p }
+        }
+        return MotionFrame(t: f.t, pose: f.pose, fix: fix)
+    }
 }
 
 final class FeedbackBuffer {
@@ -74,8 +100,11 @@ final class FeedbackBuffer {
             correctedPose(analyzer:profile.analyzer,metric:metric.id,target:target.mean,pose:frame.pose,
                           ref:reference,torso:frame.torso,dominant:dominant,repType:rep.type)
         } }
+        let recorded=poses.filter { $0.t >= rep.tStart-0.05 && $0.t <= rep.tEnd+0.05 && $0.pose.count >= 8 }.map { (t:$0.t,pose:$0.pose) }
+        let motion=fixMotion(recorded,keyPose:correction == nil ? nil : frame.pose,ghost:correction,
+                             tStart:rep.tStart,keyT:frame.t,tEnd:rep.tEnd)
         return RepCard(index:index,sport:sport,rep:rep,cue:cue,shortLabel:profile.shortLabel(forCue:cue),
-                       metric:spec?.id,frame:frame,corrected:correction)
+                       metric:spec?.id,frame:frame,corrected:correction,motion:motion)
     }
     func clear() { frames.removeAll(); poses.removeAll(); lastImageTime = -Double.infinity }
 }

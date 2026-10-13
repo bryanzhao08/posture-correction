@@ -16,6 +16,8 @@ export interface FixCard {
   frame: Frame | null;
   aspect: number;
   mirrored: boolean;
+  /** The whole rep as recorded (red) and the same motion with the fix applied (green), for the replay. */
+  motion: { t: number; pose: Pose; fix: Pose | null }[];
 }
 
 const BONES: [string, string][] = [
@@ -87,7 +89,81 @@ export function buildCard(eng: Engine, rep: Rep, repIndex: number, frames: Frame
   return {
     repIndex, score: rep.score, cue, short: shortLabel(eng.profile, cue), pose, ghost,
     frame: fr && Math.abs(fr.t - keyT) < 0.3 ? fr : null, aspect, mirrored,
+    motion: fixMotion(seg.map((x) => ({ t: x.t, pose: { ...x.pts } })), at && ghost ? at.pts : null, ghost,
+                      rep.t_start, at ? at.t : keyT, rep.t_end),
   };
+}
+
+const smooth = (u: number) => { const c = Math.max(0, Math.min(1, u)); return c * c * (3 - 2 * c); };
+
+/** The recorded motion with the key-moment fix eased in and out: the correction's joint offsets grow from
+ *  nothing at the start of the rep to full at the key moment, then ease off by the end (a fix at the set
+ *  point should not bend the arm at release). Joints the fix does not move match the recording. */
+export function fixMotion(frames: { t: number; pose: Pose }[], keyPose: Pose | null, ghost: Pose | null,
+                          tStart: number, keyT: number, tEnd: number) {
+  return frames.map(({ t, pose }) => {
+    if (!keyPose || !ghost) return { t, pose, fix: null };
+    const w = t <= keyT ? (keyT > tStart ? smooth((t - tStart) / (keyT - tStart)) : 1)
+                        : (tEnd > keyT ? 1 - smooth((t - keyT) / (tEnd - keyT)) : 1);
+    const fix: Pose = {};
+    for (const [k, p] of Object.entries(pose)) {
+      const g = ghost[k], kp = keyPose[k];
+      fix[k] = g && kp ? [p[0] + w * (g[0] - kp[0]), p[1] + w * (g[1] - kp[1])] : p;
+    }
+    return { t, pose, fix };
+  });
+}
+
+/** Loops the rep: red is what you did, green is the same motion with the fix. Returns a stop function. */
+export function playMotion(canvas: HTMLCanvasElement, card: FixCard, onLoop?: (u: number) => void): () => void {
+  const m = card.motion;
+  if (m.length < 2) return () => undefined;
+  const t0 = m[0].t, dur = m[m.length - 1].t - t0;
+  const slow = 2;          // half speed so the difference is easy to see
+  const pause = 0.8;       // hold the last frame before looping
+  let raf = 0;
+  const start = performance.now();
+  const frame = () => {
+    const el = ((performance.now() - start) / 1000) % (dur * slow + pause);
+    const t = t0 + Math.min(dur, el / slow);
+    let i = 0;
+    while (i < m.length - 1 && m[i + 1].t <= t) i++;
+    const a = m[i], b = m[Math.min(i + 1, m.length - 1)];
+    const u = b.t > a.t ? (t - a.t) / (b.t - a.t) : 0;
+    const lerp = (p: Pose, q: Pose): Pose => {
+      const o: Pose = {};
+      for (const k of Object.keys(p)) o[k] = q[k] ? [p[k][0] + u * (q[k][0] - p[k][0]), p[k][1] + u * (q[k][1] - p[k][1])] : p[k];
+      return o;
+    };
+    const ctx = canvas.getContext("2d")!;
+    const W = canvas.width, H = canvas.height;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = "#0d1117";
+    ctx.fillRect(0, 0, W, H);
+    let fw = W, fh = W / card.aspect;
+    if (fh > H) { fh = H; fw = H * card.aspect; }
+    // zoom on the player: frame the bounding box of the whole motion
+    const pts = m.flatMap((f) => [...Object.values(f.pose), ...Object.values(f.fix ?? {})]);
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const span = Math.max((maxX - minX) / W, (maxY - minY) / H) * 1.25;
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    const px = (p: Pt): Pt => [W / 2 + (p[0] - cx) / span, H / 2 + (p[1] - cy) / span];
+    if (card.mirrored) { ctx.translate(W, 0); ctx.scale(-1, 1); }
+    const unit = Math.max(2, H / 140);
+    if (a.fix && b.fix) {
+      ctx.save();
+      ctx.shadowColor = "rgba(61, 220, 132, 0.9)";
+      ctx.shadowBlur = unit * 3;
+      skeleton(ctx, lerp(a.fix, b.fix), px, "rgba(61, 220, 132, 0.95)", unit * 1.1, null);
+      ctx.restore();
+    }
+    skeleton(ctx, lerp(a.pose, b.pose), px, "rgba(255, 90, 95, 0.95)", unit * 0.9, null);
+    onLoop?.((t - t0) / Math.max(dur, 1e-6));
+    raf = requestAnimationFrame(frame);
+  };
+  frame();
+  return () => cancelAnimationFrame(raf);
 }
 
 /** Draws the card's freeze-frame into a canvas of any size (keeps the camera aspect, letterboxed). */

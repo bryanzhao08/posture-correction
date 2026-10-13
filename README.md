@@ -76,6 +76,16 @@ flowchart LR
 Knee angle is deliberately not used: facing the camera, knees bend toward the lens and look
 straight in 2D. Hip drop and stance height are used instead.
 
+### Fix replay
+
+Tap a rep's fix card to see **Replay**: your recorded skeleton for that rep loops at half speed in
+**red** (what you did), with the same motion in **green** with the fix applied (what to do). The green
+motion is your own joint positions with the correction for the worst cue eased in toward the key moment
+(set point, impact, contact...) and back out after it, so it keeps your proportions and timing. **Key
+moment** shows the original freeze-frame with the fix in cyan. Cues about timing or rotation have no pose
+fix and show only the freeze-frame. Web: `fixMotion` in `web/src/app/fixcard.ts`; iPhone: `fixMotion` in
+`ios/FormCoach/Camera/RepFeedback.swift` and `MotionFixReplay`.
+
 ### Player profile and drills
 
 Optional, in Settings (iPhone) or on the home screen (web). Without a profile the engine scores exactly

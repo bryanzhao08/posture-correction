@@ -43,7 +43,9 @@ final class AppState: ObservableObject {
             UserDefaults.standard.removeObject(forKey: "cachedUser")
         }
         #endif
-        let url = UserDefaults.standard.string(forKey: "backendURL") ?? "http://localhost:8000"
+        // A saved choice wins; otherwise the build's FORMCOACH_BACKEND_URL (e.g. this Mac's LAN address for a phone)
+        let built = (Bundle.main.object(forInfoDictionaryKey: "FormCoachBackendURL") as? String).flatMap { $0.isEmpty ? nil : $0 }
+        let url = UserDefaults.standard.string(forKey: "backendURL") ?? built ?? "http://localhost:8000"
         backendURL = url
         api = APIClient(baseURL: URL(string: url) ?? URL(string: "http://localhost:8000")!, token: KeychainStore.load())
         do {

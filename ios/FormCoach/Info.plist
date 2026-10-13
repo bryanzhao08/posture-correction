@@ -52,6 +52,8 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>FormCoach uses your camera to track your body and coach your practice. Video is not recorded.</string>
+	<key>FormCoachBackendURL</key>
+	<string>$(FORMCOACH_BACKEND_URL)</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Connect to your FormCoach development server on the local network.</string>
 	<key>NSMotionUsageDescription</key>

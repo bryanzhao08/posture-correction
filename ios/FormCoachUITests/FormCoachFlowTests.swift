@@ -278,7 +278,11 @@ final class FormCoachFlowTests: XCTestCase {
         shot("quiet-basketball-card")
         card.tap()
         XCTAssertTrue(app.buttons["rep.feedback.close"].waitForExistence(timeout:10))
-        XCTAssertTrue(app.staticTexts["Your pose (white) vs the fix (cyan)"].exists)
+        XCTAssertTrue(app.otherElements["rep.feedback.motion"].exists || app.images["rep.feedback.motion"].exists)
+        XCTAssertTrue(app.staticTexts["What you did"].exists)
+        shot("quiet-basketball-motion-replay")
+        app.segmentedControls["rep.feedback.mode"].buttons["Key moment"].tap()
+        XCTAssertTrue(app.staticTexts["Your pose (white) vs the fix (cyan)"].waitForExistence(timeout:5))
         shot("quiet-basketball-correction")
         close("rep.feedback.close")
         XCTAssertTrue(app.staticTexts["Demo complete · tap End session"].waitForExistence(timeout:60))
@@ -293,7 +297,7 @@ final class FormCoachFlowTests: XCTestCase {
         }
         XCTAssertTrue(stored.exists); stored.tap()
         XCTAssertTrue(app.buttons["rep.feedback.close"].waitForExistence(timeout:10))
-        XCTAssertTrue(app.staticTexts["Your pose (white) vs the fix (cyan)"].exists)
+        XCTAssertTrue(app.staticTexts["What you did"].exists)
         shot("quiet-summary-correction")
         close("rep.feedback.close")
     }

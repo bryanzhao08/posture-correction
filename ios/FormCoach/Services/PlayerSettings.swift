@@ -17,7 +17,8 @@ enum PlayerSettings {
     }
 
     static var metric: Bool {
-        UserDefaults.standard.object(forKey: metricKey) as? Bool ?? (Locale.current.measurementSystem != .us)
+        UserDefaults.standard.object(forKey: metricKey) != nil ? UserDefaults.standard.bool(forKey: metricKey)
+            : Locale.current.measurementSystem != .us
     }
 
     static func heightLabel(_ cm: Double?, metric: Bool) -> String {

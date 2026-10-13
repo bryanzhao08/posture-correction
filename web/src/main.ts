@@ -7,7 +7,7 @@ import { CameraSession, SampleSession, drawSkeleton, type SessionOptions } from 
 import { clearSessions, deleteSession, listSessions, pref, saveSession, setPref, storageIsPersistent,
          type StoredSession } from "./app/store.ts";
 import { loadPose } from "./app/pose.ts";
-import { buildCard, drawCard, shortLabel, type FixCard } from "./app/fixcard.ts";
+import { buildCard, drawCard, playMotion, shortLabel, type FixCard } from "./app/fixcard.ts";
 import { drillsFor, findDrill, personalize, type Drill } from "./engine/personalize.ts";
 import { cmToFtIn, ftInToCm, handSpeed, heightLabel, loadPlayer, minPhoneDistance, savePlayer, speedUnit,
          torsoToReal, type PlayerPrefs } from "./app/player.ts";
@@ -511,14 +511,28 @@ async function live(source: "camera" | "sample") {
 /** The big view of a rep's fix: freeze-frame, full cue and the plain explanation. */
 function openFix(d: HTMLDialogElement, sport: string, card: FixCard) {
   const info = card.cue ? cueInfo(sport, card.cue) : undefined;
-  d.innerHTML = `<canvas class="fix-big" width="600" height="750"></canvas>
-    <p class="legend"><span class="sw white"></span> You <span class="sw cyan"></span> The fix ${card.ghost ? "" : "<span class='muted small'>(this one is about timing or rotation, so there's no pose to draw)</span>"}</p>
+  const replay = card.ghost && card.motion.length > 1;
+  d.innerHTML = `${replay ? `<div class="tabs"><button class="chip on" data-tab="replay">Replay</button><button class="chip" data-tab="still">Key moment</button></div>
+    <canvas class="fix-big" id="fix-replay" width="600" height="750"></canvas>
+    <p class="legend" id="legend-replay"><span class="sw red"></span> What you did <span class="sw green"></span> What to do <span class="muted small">(your recorded rep, half speed)</span></p>` : ""}
+    <canvas class="fix-big" id="fix-still" width="600" height="750" ${replay ? "hidden" : ""}></canvas>
+    <p class="legend" id="legend-still" ${replay ? "hidden" : ""}><span class="sw white"></span> You <span class="sw cyan"></span> The fix ${card.ghost ? "" : "<span class='muted small'>(this one is about timing or rotation, so there's no pose to draw)</span>"}</p>
     <h3>${esc(card.short ?? "")}</h3>
     ${card.cue ? `<p>${esc(card.cue)}</p>` : ""}
     ${info ? `<p class="muted">${esc(info.meaning)}</p><p><strong class="good">Aim for:</strong> ${esc(info.correct_motion)}</p>` : ""}
     <button class="btn primary" id="close-explain">Got it</button>`;
   d.showModal();
-  drawCard(d.querySelector("canvas")!, card);
+  drawCard(d.querySelector<HTMLCanvasElement>("#fix-still")!, card);
+  let stop = replay ? playMotion(d.querySelector<HTMLCanvasElement>("#fix-replay")!, card) : () => undefined;
+  d.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach((btn) => btn.onclick = () => {
+    const still = btn.dataset.tab === "still";
+    d.querySelectorAll("[data-tab]").forEach((x) => x.classList.toggle("on", x === btn));
+    for (const id of ["fix-replay", "legend-replay"]) (d.querySelector("#" + id) as HTMLElement).hidden = still;
+    for (const id of ["fix-still", "legend-still"]) (d.querySelector("#" + id) as HTMLElement).hidden = !still;
+    stop();
+    stop = still ? () => undefined : playMotion(d.querySelector<HTMLCanvasElement>("#fix-replay")!, card);
+  });
+  d.onclose = () => stop();
   document.getElementById("close-explain")!.onclick = () => d.close();
 }
 
