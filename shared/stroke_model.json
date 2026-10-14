@@ -1191,7 +1191,12 @@
     -0.485128
    ],
    "C": 0.1,
-   "n_train": 1013
+   "n_train": 1013,
+   "eval": {
+    "held_out_accuracy": 0.7745,
+    "held_out_macro_f1": 0.7003,
+    "cv_accuracy": 0.7602
+   }
   },
   "fine": {
    "type": "multinomial_logistic_regression",
@@ -2619,7 +2624,12 @@
     0.558539
    ],
    "C": 1.0,
-   "n_train": 1013
+   "n_train": 1013,
+   "eval": {
+    "held_out_accuracy": 0.6,
+    "held_out_macro_f1": 0.5313,
+    "cv_accuracy": 0.5517
+   }
   },
   "groundstroke_spin": {
    "type": "multinomial_logistic_regression",
@@ -2871,7 +2881,12 @@
     -1.641933
    ],
    "C": 0.03,
-   "n_train": 606
+   "n_train": 606,
+   "eval": {
+    "held_out_accuracy": 0.9315,
+    "held_out_macro_f1": 0.9078,
+    "cv_accuracy": 0.9123
+   }
   },
   "serve_type": {
    "type": "multinomial_logistic_regression",
@@ -3239,7 +3254,13 @@
     -0.069204
    ],
    "C": 1.0,
-   "n_train": 238
+   "n_train": 238,
+   "eval": {
+    "held_out_accuracy": 0.4468,
+    "held_out_macro_f1": 0.4355,
+    "cv_accuracy": 0.3234
+   },
+   "reliability": "experimental: close to chance (33%) in grouped CV; do not show to users as a verdict. Flat/kick/slice differ mostly in racket-face and ball-toss details a front-view 2D wrist track cannot see."
   }
  },
  "training_data": {

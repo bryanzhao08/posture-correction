@@ -66,7 +66,7 @@ Logistic-regression C was chosen per task by the same grouped CV (grid [0.01, 0.
 | serve_type | gbt | 55.3% | 0.538 | 72.4% (n=29) | 27.8% (n=18) |
 | serve_type | knn | 53.2% | 0.532 | 58.6% (n=29) | 44.4% (n=18) |
 
-The exported logistic regressions share one normalisation fitted on all development examples; their held-out numbers below can differ from the table above by a few tenths of a percent for the variant tasks, whose table rows normalise on the subset.
+The exported logistic regressions share one normalisation fitted on all development examples; their held-out numbers below can differ from the rows above for the variant tasks (by several points for the 47-example serve_type task), whose rows above normalise on the subset only.
 
 ## Exported model (shared/stroke_model.json): held-out results
 
@@ -167,3 +167,59 @@ Pooled out-of-fold over the development players (n=238):
 
 Of the fine-model errors on held-out players, 37.2% stay within the right coarse family.
 
+
+## Limitations (read before shipping)
+
+**Camera and capture.** THETIS is one fixed front view: a Kinect's RGB camera, 640x480 at 17 fps,
+players shadow-swinging (no ball, little court movement) indoors; the loader treats every player as
+right-handed. A phone on a tripod differs in height, distance, lens and frame rate (30-60 fps),
+and many users will film from the side or behind, where the engine's own front-view assumptions
+(dominant side from the shoulder line, across-body sweep) no longer hold. The model has never seen
+a side or back view, a left-handed player or a real rally; expect a drop on phone footage and treat
+these numbers as an upper bound until it is checked on labelled phone clips. Shadow swings are also
+smaller and slower than real strokes, so speed/duration features will shift.
+
+**What the engine misses decides what the model sees.** Only 63% of clips give an example: the
+engine (unchanged; tuned to count full groundstrokes and serves) misses most forehand volleys (12%
+counted) and about half of the backhand volleys, kick serves and forehand slices, because they are
+short punches or slow swings that fail its speed/size gates. It also types about a quarter of the
+serves and smashes it counts as forehands (its segment then often covers only part of the motion).
+The classifier can only relabel reps that were counted, and its volley results rest on few examples
+(forehand volley: 20 in total), so volley numbers are fragile.
+
+**Confusable classes.**
+- serve vs smash: same overhead motion; the toss (other hand up before the hit) is the main cue and
+  it is often hidden or skipped in shadow swings. Smash recall is 30-40%.
+- flat vs kick vs slice serve: at chance in grouped CV (~32%). The differences are racket-face angle,
+  toss placement over/behind the head and back arch, which a 2D front-view wrist track at 17 fps does
+  not resolve. A side experiment with an apex-centred window over the whole clip (all 495 serve clips,
+  wrist and nose tracks) reached ~45% CV accuracy, still too weak to show to users. The exported
+  serve_type task is marked experimental in the JSON.
+- backhand slice vs backhand volley vs one-handed backhand, and forehand slice vs forehand flat:
+  shorter, higher-to-lower swings look alike in 2D. Groundstroke spin (slice vs flat/topspin) is the
+  reliable variant (~91-93%), mostly because slices finish lower and start higher.
+- forehand flat vs open stance: separable only through the feet/hips, which are noisy at this
+  resolution; most errors there are between those two.
+
+**Beginners vs experts.** Experts are classified more reliably (coarse: ~86% vs ~71% on held-out
+players) because their strokes are more stereotyped; beginners' variants blur together. The serve
+type numbers per group are on 18-29 examples and are noise.
+
+**Statistics.** 55 players, ~1,250 usable reps; the held-out split has 11 players (235 reps), so a
+held-out accuracy is +/- ~3 points for the coarse task and much more for small classes. The fold
+standard deviations in the CV table are the better guide to spread.
+
+**What more data would help.**
+- Phone-camera clips (front, side, behind) of real hitting, with stroke labels, including left-handers:
+  this is the largest gap and the first thing to collect (even 20-30 players would show the real drop).
+- Higher frame rate (60 fps) so contact, toss apex and racket-face rotation are resolved.
+- More volleys, smashes and serve variants per player; ideally ball/racket tracking or a racket-mounted
+  IMU for spin and serve type, which skeleton-only features cannot recover.
+- Engine rep counting tuned for volleys (short, compact punches) so they produce examples at all.
+
+**Licence.** THETIS is published for research. This model is a research prototype trained on it;
+confirm the dataset terms with its authors before any commercial use and retrain on licensed data
+for a product release.
+
+Citation: S. Gourgari, G. Goudelis, K. Karpouzis, S. Kollias, "THETIS: Three Dimensional Tennis Shots,
+a human action dataset", CVPR Workshops 2013. https://github.com/THETIS-dataset/dataset
