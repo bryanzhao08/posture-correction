@@ -7,7 +7,7 @@ export const BETA = {
   /** Length of the free trial shown to beta testers. */
   trialMonths: 3,
   /** Sign-up relay (relay/, a Cloudflare Worker that emails you via Resend). Empty = sign-ups closed.
-   *  After `npx wrangler deploy` in relay/, paste "<workers.dev URL>/signup" here. */
+   *  Set by the SIGNUP_URL repository variable at build time (see docs/SIGNUP_RELAY.md). */
   signupUrl: (import.meta.env.VITE_SIGNUP_URL as string | undefined) || "",
   /** Hosted checkout links (e.g. Stripe Payment Links with a free trial). Card details are entered on the
    *  payment provider's page and never pass through FormCoach. Empty = button hidden. */

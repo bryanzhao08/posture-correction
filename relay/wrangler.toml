@@ -20,6 +20,6 @@ SEND_CONFIRMATION = "false"
 # Optional KV namespace for durable rate limiting. Create it with
 #   npx wrangler kv namespace create SIGNUPS
 # then uncomment and paste the id it prints:
-# [[kv_namespaces]]
-# binding = "SIGNUPS"
-# id = "<paste id here>"
+[[kv_namespaces]]
+binding = "SIGNUPS"
+id = "66a7e79de3ad435cb117dca3bbf8df69"
