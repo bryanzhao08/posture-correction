@@ -4,9 +4,11 @@ import catalogJson from "../../shared/cue_catalog.json";
 import { effectiveProfile, type EngineEvent, type Joint, type Recording, type Rep } from "./engine/engine.ts";
 import { summarize, targetFor, type Summary } from "./engine/scoring.ts";
 import { CameraSession, SampleSession, drawSkeleton, type SessionOptions } from "./app/session.ts";
-import { clearSessions, deleteSession, listSessions, pref, saveSession, setPref, storageIsPersistent,
+import { clearSessions, deleteSession, listSessions, pref, saveSession, setPref, storageIsAvailable,
          type StoredSession } from "./app/store.ts";
 import { loadPose } from "./app/pose.ts";
+import { Router, type Route, type Setup } from "./app/router.ts";
+import { primeSpeech, cancelSpeech, speakTip } from "./app/speech.ts";
 import { gate, pricing, trialBanner } from "./app/beta.ts";
 import { buildCard, drawCard, playMotion, shortLabel, type FixCard } from "./app/fixcard.ts";
 import { drillsFor, findDrill, personalize, type Drill } from "./engine/personalize.ts";
@@ -40,7 +42,6 @@ const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.ch
 const fmt = (v: number | null | undefined, d = 0) => (v == null || !isFinite(v) ? "—" : v.toFixed(d));
 let teardown: (() => void) | null = null;
 
-interface Setup { sport: string; training: string | null; view: string; stroke: "forehand" | "backhand"; drill: string | null }
 const setup: Setup = { sport: "golf", training: null, view: "front", stroke: "forehand", drill: null };
 const player = (): PlayerPrefs => loadPlayer(profiles.player);
 const LEVELS = ["beginner", "intermediate", "advanced", "pro"].filter((l) => l in profiles.player.levels);
@@ -73,16 +74,69 @@ function cueInfo(sport: string, text: string): CueInfo | undefined {
     ?? catalog.find((c) => c.text === text);
 }
 
-function go(screen: () => void | Promise<void>) {
+let renderVersion = 0;
+const summaries = new Map<string, { session: StoredSession; cards: FixCard[]; saving?: Promise<void>; fresh: boolean }>();
+const router = new Router((route) => {
   teardown?.();
   teardown = null;
+  router.onLeaveLive = null;
+  if (route.screen !== "live") cancelSpeech();
+  app.querySelectorAll<HTMLDialogElement>("dialog[open]").forEach((d) => d.close());
+  const version = ++renderVersion;
   window.scrollTo(0, 0);
-  void screen();
+  void renderRoute(route, version).catch((error: unknown) => {
+    if (version !== renderVersion) return;
+    app.innerHTML = `<main class="page"><h1>Could not open this screen</h1><p>${esc((error as Error).message)}</p><button class="btn primary" id="home">Home</button></main>`;
+    document.getElementById("home")!.onclick = () => router.navigate({ screen: "home" }, true, true);
+  });
+});
+const setupRoute = (): Route => ({ screen: "setup", setup: { ...setup } });
+const goHome = () => router.navigate({ screen: "home" });
+const goSetup = () => router.navigate(setupRoute());
+const goHistory = () => router.navigate({ screen: "history" });
+const startSession = (source: "camera" | "sample") => {
+  primeSpeech();
+  liveStartRequested = true;
+  router.navigate({ screen: "live", setup: { ...setup }, source });
+};
+
+async function renderRoute(route: Route, version: number) {
+  if (route.setup) {
+    if (!(SPORTS as readonly string[]).includes(route.setup.sport)) return router.navigate({ screen: "home" }, true);
+    Object.assign(setup, route.setup);
+    const base = profiles.sports[setup.sport];
+    const tr = base.training?.find((t: { id: string }) => t.id === setup.training) ?? base.training?.[0];
+    setup.training = tr?.id ?? null;
+    if (tr && !tr.views.includes(setup.view)) setup.view = tr.recommended;
+    if (!tr) setup.view = base.default_view ?? "front";
+    setupDrills();
+  }
+  if (route.screen === "home") return home();
+  if (route.screen === "setup") return preSession();
+  if (route.screen === "history") return history();
+  if (route.screen === "plans") return pricing(app, goHome);
+  if (route.screen === "live") {
+    // Reload/Forward cannot reacquire a camera without a fresh Start tap.
+    if (!route.setup || !liveStartRequested) return router.navigate(setupRoute(), true);
+    liveStartRequested = false;
+    return live(route.source ?? "camera");
+  }
+  const cached = route.id ? summaries.get(route.id) : undefined;
+  const stored = cached?.session ?? (await listSessions()).find((x) => x.id === route.id);
+  await cached?.saving;
+  if (version !== renderVersion) return;
+  if (!stored) return router.navigate({ screen: "history" }, true);
+  const fresh = cached?.fresh ?? false;
+  if (cached) cached.fresh = false;
+  return summaryScreen(stored, fresh && stored.source === "camera" && stored.summary.rep_count > 0, cached?.cards ?? [], true);
 }
+let liveStartRequested = false;
 
 // ---------------------------------------------------------------- home
 async function home() {
+  const version = renderVersion;
   const sessions = await listSessions();
+  if (version !== renderVersion) return;
   const hand = pref<string>("handedness", "right");
   const pl = player();
   const [ft, inch] = pl.height_cm ? cmToFtIn(pl.height_cm) : [null, null];
@@ -140,7 +194,7 @@ async function home() {
     setup.view = p.training ? p.training[0].recommended : (p.default_view ?? "front");
     setup.drill = null;
     setupDrills();
-    go(preSession);
+    goSetup();
   });
   (app.querySelector("#hand") as HTMLSelectElement).onchange = (e) => setPref("handedness", (e.target as HTMLSelectElement).value);
   const save = (change: Partial<PlayerPrefs>) => savePlayer({ ...player(), ...change });
@@ -174,13 +228,14 @@ async function home() {
     save({ height_cm: cm });
     note.textContent = cm ? `Saved: ${heightLabel(cm, pl.units)}.` : "Height cleared.";
   });
-  (app.querySelector("#history") as HTMLButtonElement).onclick = () => go(history);
-  (app.querySelector("#plans") as HTMLButtonElement).onclick = () => go(() => pricing(app, () => go(home)));
-  void loadPose().catch(() => undefined); // warm up the model while the user reads
+  (app.querySelector("#history") as HTMLButtonElement).onclick = () => goHistory();
+  (app.querySelector("#plans") as HTMLButtonElement).onclick = () => router.navigate({ screen: "plans" });
 }
 
 // ---------------------------------------------------------------- pre-session
 function preSession() {
+  router.update(setupRoute());
+  void loadPose().catch(() => undefined); // warm up only after the visitor chooses a sport
   const base = profiles.sports[setup.sport];
   const pl = player();
   const drills = setupDrills();
@@ -200,7 +255,8 @@ function preSession() {
       <div class="chips">${trainings.map((t) => `<button class="chip ${t.id === setup.training ? "on" : ""}" data-training="${t.id}">${esc(t.label)}</button>`).join("")}</div>
       <h2>Camera position</h2>
       <div class="chips">${tr!.views.map((v) => `<button class="chip ${v === setup.view ? "on" : ""}" data-view="${v}">${VIEW_LABEL[v]}${v === tr!.recommended ? " · recommended" : ""}</button>`).join("")}</div>
-      <p class="muted">${esc(tr!.why)}</p>
+      <p class="muted" id="view-rationale">${esc(prof.camera)}</p>
+      <p class="muted small" id="training-recommendation"><strong>Training recommendation: ${VIEW_LABEL[tr!.recommended]}.</strong> ${esc(tr!.why)}</p>
       ${showStroke ? `<h2>Stroke</h2><div class="chips">${(["forehand", "backhand"] as const).map((s) =>
         `<button class="chip ${s === setup.stroke ? "on" : ""}" data-stroke="${s}">${s[0].toUpperCase() + s.slice(1)}</button>`).join("")}</div>
         <p class="muted small">Side-on, forehands and backhands look alike to the camera, so tell it which one you're practising.</p>` : ""}
@@ -235,21 +291,21 @@ function preSession() {
       <button class="btn ghost" id="sample">No camera handy? Try a sample recording</button>
     </div>
   </main>`;
-  app.querySelector<HTMLButtonElement>("#back")!.onclick = () => go(home);
+  app.querySelector<HTMLButtonElement>("#back")!.onclick = () => goHome();
   app.querySelectorAll<HTMLButtonElement>("[data-training]").forEach((b) => b.onclick = () => {
     setup.training = b.dataset.training!;
     setup.view = trainings.find((t) => t.id === setup.training)!.recommended;
     preSession();
   });
   app.querySelectorAll<HTMLButtonElement>("[data-drill]").forEach((b) => b.onclick = () => { setup.drill = b.dataset.drill!; preSession(); });
-  app.querySelector<HTMLButtonElement>("#edit-profile")!.onclick = () => go(home);
+  app.querySelector<HTMLButtonElement>("#edit-profile")!.onclick = () => goHome();
   app.querySelectorAll<HTMLButtonElement>("[data-view]").forEach((b) => b.onclick = () => { setup.view = b.dataset.view!; preSession(); });
   app.querySelectorAll<HTMLButtonElement>("[data-stroke]").forEach((b) => b.onclick = () => { setup.stroke = b.dataset.stroke as Setup["stroke"]; preSession(); });
   app.querySelector<HTMLInputElement>("#rear")!.onchange = (e) => setPref("rearCamera", (e.target as HTMLInputElement).checked);
   app.querySelector<HTMLInputElement>("#speak")!.onchange = (e) => setPref("speak", (e.target as HTMLInputElement).checked);
   app.querySelector<HTMLInputElement>("#nice")!.onchange = (e) => setPref("sayNice", (e.target as HTMLInputElement).checked);
-  app.querySelector<HTMLButtonElement>("#start")!.onclick = () => go(() => live("camera"));
-  app.querySelector<HTMLButtonElement>("#sample")!.onclick = () => go(() => live("sample"));
+  app.querySelector<HTMLButtonElement>("#start")!.onclick = () => startSession("camera");
+  app.querySelector<HTMLButtonElement>("#sample")!.onclick = () => startSession("sample");
 }
 
 // ---------------------------------------------------------------- live
@@ -302,6 +358,13 @@ async function live(source: "camera" | "sample") {
         </div>
       </div>
     </div>
+    <section class="session-alert" id="camera-alert" hidden role="status">
+      <p id="camera-message"></p><div class="row gap"><button class="btn primary" id="resume-camera">Resume camera</button><button class="btn ghost" id="quiet-camera">Turn spoken tips off</button></div>
+    </section>
+    <section class="session-alert exit-confirm" id="exit-confirm" hidden role="dialog" aria-modal="true" aria-labelledby="exit-title">
+      <h2 id="exit-title">End this session?</h2><p>End now to see your summary, or keep practising.</p>
+      <div class="row gap"><button class="btn primary" id="keep-session">Keep practising</button><button class="btn danger" id="confirm-end">End session</button></div>
+    </section>
     <dialog id="explain"></dialog>
   </main>`;
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -359,16 +422,16 @@ async function live(source: "camera" | "sample") {
   const openCard = (card: FixCard) => openFix($<HTMLDialogElement>("explain"), opts.sport, card);
 
   const speak = (text: string) => {
-    if (!pref("speak", true) || !("speechSynthesis" in window)) return;
+    if (!pref("speak", true)) return;
     const now = performance.now();
     if (now - lastSpoken < 6000) return;
     lastSpoken = now;
-    speechSynthesis.cancel();
-    speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    speakTip(text);
   };
 
   const onEvent = (ev: EngineEvent) => {
     if (ev.kind === "rep" && ev.rep) {
+      if (ended || !session) return;
       const eng = session.engine;
       const n = eng.reps.length;
       $("reps").textContent = goal ? `${n}/${goal}` : String(n);
@@ -420,9 +483,17 @@ async function live(source: "camera" | "sample") {
     onEvent,
     onState: (s: string) => { $("state").textContent = STATE_LABEL[s] ?? s; $("state").dataset.state = s; },
     onEnd: () => finish(),
+    onCameraStatus: (message: string | null) => {
+      if (ended) return;
+      $("camera-alert").hidden = !message;
+      $("camera-message").textContent = message ?? "";
+    },
   };
 
-  let session: CameraSession | SampleSession;
+  let session: CameraSession | SampleSession | null = null;
+  let ended = false;
+  const abort = new AbortController();
+  let countdownTimer = 0;
   let visibleSince: number | null = null;
   let countdownStarted = false;
   const setupCheck = (joints: Joint[] | null) => {
@@ -449,7 +520,7 @@ async function live(source: "camera" | "sample") {
     const msg = $("setup-check");
     let n = 3;
     const tick = () => {
-      if (!session.running) return;
+      if (ended || !session?.running) return;
       if (n === 0) {
         msg.hidden = true;
         (session as CameraSession).beginCounting();
@@ -460,55 +531,106 @@ async function live(source: "camera" | "sample") {
       }
       msg.innerHTML = `<p class="count">${n}</p>`;
       n--;
-      setTimeout(tick, 800);
+      countdownTimer = window.setTimeout(tick, 800);
     };
     tick();
   };
 
-  let ended = false;
+  const cleanup = () => {
+    ended = true;
+    abort.abort();
+    clearTimeout(noteTimer);
+    clearTimeout(countdownTimer);
+    session?.stop();
+    cancelSpeech();
+    document.removeEventListener("visibilitychange", onVis);
+    const dialog = $<HTMLDialogElement>("explain");
+    if (dialog?.open) dialog.close();
+    router.onLeaveLive = null;
+  };
   const finish = () => {
     if (ended) return;
-    ended = true;
-    const eng = session.engine;
-    const duration = source === "sample" ? (session as SampleSession).duration : session.elapsed;
-    session.stop();
-    speechSynthesis?.cancel?.();
-    const summary = summarize(opts.sport, eng.reps, eng.rejected, eng.profile.metrics, profiles.scoring, eng.activeS, eng.passiveS);
-    const rec: StoredSession = {
-      id: crypto.randomUUID?.() ?? String(Date.now()), sport: opts.sport, view: opts.view, focus: opts.focus,
-      training: setup.training, handedness: opts.handedness, drill: setup.drill, level: pl.level, height_cm: pl.height_cm,
-      source, started_at: new Date().toISOString(),
-      duration_s: duration, summary, reps: eng.reps,
-    };
-    go(() => summaryScreen(rec, source === "camera" && eng.reps.length > 0, cards));
-  };
-  $("end").onclick = finish;
-
-  if (source === "sample") {
-    const res = await fetch(import.meta.env.BASE_URL + `samples/${opts.sport}_demo.json`);
-    const rec = (await res.json()) as Recording;
-    opts.handedness = rec.handedness ?? "right";
-    session = new SampleSession(profiles, { ...opts, view: rec.view ?? sportProfile(opts.sport).default_view ?? "front" }, hooks, rec);
-    (session as SampleSession).start();
-  } else {
-    session = new CameraSession(profiles, opts, hooks);
-    $("state").textContent = "Loading pose tracker…";
-    try {
-      await (session as CameraSession).start($<HTMLVideoElement>("video"), mirrored ? "user" : "environment");
-    } catch (e) {
-      session.stop();
-      app.innerHTML = `<main class="page"><h1>Camera unavailable</h1>
-        <p>${esc((e as Error)?.name === "NotAllowedError" ? "Camera permission was denied. Allow camera access for this site in your browser settings, then try again." : `Could not start the camera or pose tracker (${(e as Error)?.message ?? e}).`)}</p>
-        <div class="row gap"><button class="btn primary" id="retry">Try again</button><button class="btn ghost" id="sample">Use a sample recording</button><button class="btn link" id="home">Home</button></div></main>`;
-      document.getElementById("retry")!.onclick = () => go(() => live("camera"));
-      document.getElementById("sample")!.onclick = () => go(() => live("sample"));
-      document.getElementById("home")!.onclick = () => go(home);
+    if (!session) {
+      cleanup();
+      router.navigate(setupRoute(), true, true);
       return;
     }
-  }
+    const eng = session.engine;
+    const duration = source === "sample" ? (session as SampleSession).duration : session.elapsed;
+    const startedAt = session.startedAt;
+    cleanup();
+    const summary = summarize(opts.sport, eng.reps, eng.rejected, eng.profile.metrics, profiles.scoring, eng.activeS, eng.passiveS);
+    const rec: StoredSession = {
+      id: crypto.randomUUID?.() ?? String(Date.now()), sport: opts.sport, view: session.opts.view, focus: opts.focus,
+      training: setup.training, handedness: session.opts.handedness, drill: setup.drill, level: pl.level, height_cm: pl.height_cm,
+      source, started_at: startedAt ?? new Date().toISOString(),
+      duration_s: duration, summary, reps: eng.reps,
+    };
+    const save = source === "camera" && eng.reps.length > 0;
+    summaries.set(rec.id, { session: rec, cards, fresh: true, saving: save ? saveSession(rec) : undefined });
+    router.navigate({ screen: "summary", id: rec.id }, true, true);
+  };
   const onVis = () => { if (document.hidden && source === "camera") finish(); };
+  teardown = cleanup; // register before either asynchronous startup
   document.addEventListener("visibilitychange", onVis);
-  teardown = () => { document.removeEventListener("visibilitychange", onVis); session.stop(); };
+  router.onLeaveLive = () => {
+    const dialog = $<HTMLDialogElement>("explain");
+    if (dialog.open) dialog.close();
+    $("exit-confirm").hidden = false;
+    app.querySelector<HTMLElement>(".hud")!.inert = true;
+    $("camera-alert").inert = true;
+    $("keep-session").focus();
+  };
+  $("keep-session").onclick = () => {
+    $("exit-confirm").hidden = true;
+    app.querySelector<HTMLElement>(".hud")!.inert = false;
+    $("camera-alert").inert = false;
+    $("end").focus();
+  };
+  $("exit-confirm").onkeydown = (event) => {
+    if (event.key === "Escape") { event.preventDefault(); $("keep-session").click(); }
+    if (event.key === "Tab") {
+      event.preventDefault();
+      (document.activeElement === $("keep-session") ? $("confirm-end") : $("keep-session")).focus();
+    }
+  };
+  $("confirm-end").onclick = finish;
+  $("end").onclick = finish;
+  $("resume-camera").onclick = () => { if (session instanceof CameraSession) void session.resume(); };
+  $("quiet-camera").onclick = () => {
+    setPref("speak", false);
+    cancelSpeech();
+    if (session instanceof CameraSession) void session.resume();
+  };
+
+  try {
+    if (source === "sample") {
+      const res = await fetch(import.meta.env.BASE_URL + `samples/${opts.sport}_demo.json`, { signal: abort.signal });
+      if (!res.ok) throw new Error(`Sample download failed (HTTP ${res.status})`);
+      const rec = (await res.json()) as Recording;
+      if (!Array.isArray(rec.frames) || !rec.frames.length || rec.frames.some((f) => !Number.isFinite(f.t) || !Array.isArray(f.j))) {
+        throw new Error("The sample recording is invalid");
+      }
+      if (ended) return;
+      opts.handedness = rec.handedness ?? "right";
+      session = new SampleSession(profiles, { ...opts, view: rec.view ?? sportProfile(opts.sport).default_view ?? "front" }, hooks, rec);
+      session.start();
+    } else {
+      session = new CameraSession(profiles, opts, hooks);
+      $("state").textContent = "Loading pose tracker…";
+      await session.start($<HTMLVideoElement>("video"), mirrored ? "user" : "environment");
+    }
+  } catch (e) {
+    if (ended) return;
+    cleanup();
+    app.innerHTML = `<main class="page"><h1>${source === "camera" ? "Camera unavailable" : "Sample unavailable"}</h1>
+      <p>${esc((e as Error)?.name === "NotAllowedError" ? "Camera permission was denied. Allow camera access for this site in your browser settings, then try again." : `Could not start ${source === "camera" ? "the camera or pose tracker" : "the sample recording"} (${(e as Error)?.message ?? e}).`)}</p>
+      <div class="row gap"><button class="btn primary" id="retry">Try again</button>${source === "camera" ? '<button class="btn ghost" id="sample">Use a sample recording</button>' : ""}<button class="btn link" id="home">Home</button></div></main>`;
+    document.getElementById("retry")!.onclick = () => startSession(source);
+    const sample = document.getElementById("sample");
+    if (sample) sample.onclick = () => startSession("sample");
+    document.getElementById("home")!.onclick = goHome;
+  }
 }
 
 /** The big view of a rep's fix: freeze-frame, full cue and the plain explanation. */
@@ -561,7 +683,8 @@ function metricRows(s: StoredSession) {
     }).join("");
 }
 
-async function summaryScreen(s: StoredSession, save: boolean, cards: FixCard[] = []) {
+async function summaryScreen(s: StoredSession, save: boolean, cards: FixCard[] = [], alreadySaved = false) {
+  const version = renderVersion;
   const prof = sessionProfile(s.sport, s.view, s.drill, s);
   const pl = player();
   const drill = findDrill(profiles.sports[s.sport], s.drill);
@@ -572,7 +695,8 @@ async function summaryScreen(s: StoredSession, save: boolean, cards: FixCard[] =
   const speeds = s.reps.map((r) => handSpeed(r.peak_speed, { height_cm: s.height_cm }, profiles.player, pl.units))
     .filter((v): v is number => v != null);
   const goal = drill?.goal_reps ?? null;
-  if (save) await saveSession(s);
+  if (save && !alreadySaved) await saveSession(s);
+  if (version !== renderVersion) return;
   const prevScores = previous.slice(0, 5).map((x) => x.summary.score!);
   const prevAvg = prevScores.length ? prevScores.reduce((a, b) => a + b, 0) / prevScores.length : null;
   const best = previous.length ? Math.max(...previous.map((x) => x.summary.score!)) : null;
@@ -585,7 +709,7 @@ async function summaryScreen(s: StoredSession, save: boolean, cards: FixCard[] =
     <h1>${ICONS[s.sport]} Session summary</h1>
     <p class="muted">${drill ? `${esc(drill.label)} · ` : ""}${s.level ? `scored as ${esc(profiles.player.levels[s.level]?.label ?? s.level)}` : ""}</p>
     ${s.source === "sample" ? `<p class="notice">This was a sample recording, so it isn't saved to your history.</p>` : ""}
-    ${!save && s.source === "camera" ? `<p class="notice">No reps were counted, so nothing was saved. Make sure your whole body is in view and swing at full speed.</p>` : ""}
+    ${s.summary.rep_count === 0 && s.source === "camera" ? `<p class="notice">No reps were counted, so nothing was saved. Make sure your whole body is in view and swing at full speed.</p>` : ""}
     <section class="stats">
       <div class="stat big"><div class="num">${fmt(sc)}</div><div class="lbl">Session score</div></div>
       <div class="stat"><div class="num">${s.summary.rep_count}${goal ? `<span class="of">/${goal}</span>` : ""}</div><div class="lbl">${goal ? (s.summary.rep_count >= goal ? "Goal reached ✓" : "Reps of goal") : "Reps counted"}</div></div>
@@ -619,9 +743,9 @@ async function summaryScreen(s: StoredSession, save: boolean, cards: FixCard[] =
     const card = cards.find((c) => c.repIndex === Number(b.dataset.card));
     if (card) openFix(document.getElementById("explain") as HTMLDialogElement, s.sport, card);
   });
-  document.getElementById("again")!.onclick = () => go(preSession);
-  document.getElementById("history")!.onclick = () => go(history);
-  document.getElementById("home")!.onclick = () => go(home);
+  document.getElementById("again")!.onclick = () => goSetup();
+  document.getElementById("history")!.onclick = () => goHistory();
+  document.getElementById("home")!.onclick = () => goHome();
 }
 
 function checkpointText(previous: StoredSession[], s: StoredSession) {
@@ -636,8 +760,10 @@ function checkpointText(previous: StoredSession[], s: StoredSession) {
 
 // ---------------------------------------------------------------- history
 async function history() {
+  const version = renderVersion;
   const sessions = await listSessions();
-  const persistent = await storageIsPersistent();
+  const available = await storageIsAvailable();
+  if (version !== renderVersion) return;
   const bySport = SPORTS.map((sp) => {
     const xs = sessions.filter((x) => x.sport === sp && x.summary.score != null);
     return { sp, n: xs.length, avg: xs.length ? xs.reduce((a, x) => a + x.summary.score!, 0) / xs.length : null,
@@ -647,7 +773,7 @@ async function history() {
   <main class="page">
     <button class="btn link" id="back">← Home</button>
     <h1>History</h1>
-    ${persistent ? "" : `<p class="notice">This browser is blocking storage (private mode?), so sessions last only until you close the tab.</p>`}
+    <p class="notice">Saved in this browser only — export to keep a copy. Private browsing, clearing site data or browser storage eviction can remove sessions.${available ? "" : " Storage is unavailable, so sessions are kept in memory for this visit."}</p>
     ${bySport.length ? `<section class="grid sports">${bySport.map((x) => `<div class="card"><h3>${ICONS[x.sp]} ${esc(profiles.sports[x.sp].label)}</h3>
       <p><strong>${fmt(x.avg, 1)}</strong> average · best ${fmt(x.best)}<br><span class="muted small">${x.n} sessions · ${x.reps} reps</span></p>
       ${sparkline(sessions.filter((s) => s.sport === x.sp).map((s) => s.summary.score ?? 0).reverse())}</div>`).join("")}</section>` : `<p class="muted">No sessions yet. Finish a camera session with at least one counted rep and it shows up here.</p>`}
@@ -659,8 +785,8 @@ async function history() {
       <button class="btn danger" id="clear">Delete all</button></div>
       <p class="muted small" id="confirm" hidden></p>` : ""}
   </main>`;
-  document.getElementById("back")!.onclick = () => go(home);
-  app.querySelectorAll<HTMLButtonElement>("[data-del]").forEach((b) => b.onclick = async () => { await deleteSession(b.dataset.del!); go(history); });
+  document.getElementById("back")!.onclick = () => goHome();
+  app.querySelectorAll<HTMLButtonElement>("[data-del]").forEach((b) => b.onclick = async () => { await deleteSession(b.dataset.del!); goHistory(); });
   const dl = (name: string, type: string, body: string) => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([body], { type }));
@@ -682,7 +808,7 @@ async function history() {
         return;
       }
       await clearSessions();
-      go(history);
+      goHistory();
     };
   }
 }
@@ -704,4 +830,4 @@ function toCsv(sessions: StoredSession[]) {
   return rows.map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(",")).join("\n");
 }
 
-gate(app, () => go(home));
+gate(app, () => router.start());

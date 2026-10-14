@@ -44,9 +44,14 @@ function run<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<
   return open().then((db) => new Promise((resolve) => {
     if (!db) return resolve(null);
     try {
-      const req = fn(db.transaction(STORE, mode).objectStore(STORE));
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => resolve(null);
+      const tx = db.transaction(STORE, mode);
+      let result: T | null = null;
+      tx.oncomplete = () => resolve(result);
+      tx.onabort = () => resolve(null);
+      tx.onerror = () => { result = null; }; // default error handling aborts the transaction
+      const req = fn(tx.objectStore(STORE));
+      req.onsuccess = () => { result = req.result; };
+      req.onerror = () => { result = null; };
     } catch {
       resolve(null);
     }
@@ -74,12 +79,15 @@ export async function clearSessions(): Promise<void> {
   await run("readwrite", (st) => st.clear());
 }
 
-export function storageIsPersistent(): Promise<boolean> {
+/** Availability is not a durability guarantee (including private browsing). */
+export function storageIsAvailable(): Promise<boolean> {
   return open().then((db) => db !== null);
 }
 
 // Small per-visitor preferences.
+const memoryPrefs = new Map<string, unknown>();
 export function pref<T>(key: string, fallback: T): T {
+  if (memoryPrefs.has(key)) return memoryPrefs.get(key) as T;
   try {
     const v = localStorage.getItem("fc." + key);
     return v === null ? fallback : (JSON.parse(v) as T);
@@ -89,6 +97,7 @@ export function pref<T>(key: string, fallback: T): T {
 }
 
 export function setPref(key: string, value: unknown) {
+  memoryPrefs.set(key, value);
   try {
     localStorage.setItem("fc." + key, JSON.stringify(value));
   } catch {

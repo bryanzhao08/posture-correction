@@ -86,9 +86,17 @@ export function buildCard(eng: Engine, rep: Rep, repIndex: number, frames: Frame
   }
   if (pose && Object.keys(pose).length < 8) pose = null;
   const fr = nearest(frames, keyT);
+  // Capture canvases belong to a recyclable rolling buffer. Cards own an immutable copy.
+  let frozen: Frame | null = null;
+  if (fr && Math.abs(fr.t - keyT) < 0.3) {
+    const image = document.createElement("canvas");
+    image.width = fr.w; image.height = fr.h;
+    image.getContext("2d")!.drawImage(fr.image, 0, 0, fr.w, fr.h);
+    frozen = { ...fr, image };
+  }
   return {
     repIndex, score: rep.score, cue, short: shortLabel(eng.profile, cue), pose, ghost,
-    frame: fr && Math.abs(fr.t - keyT) < 0.3 ? fr : null, aspect, mirrored,
+    frame: frozen, aspect, mirrored,
     motion: fixMotion(seg.map((x) => ({ t: x.t, pose: { ...x.pts } })), at && ghost ? at.pts : null, ghost,
                       rep.t_start, at ? at.t : keyT, rep.t_end),
   };

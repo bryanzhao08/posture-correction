@@ -64,7 +64,7 @@ footer { margin-top: 32px; line-height: 1.5; }
 .btn.big { width: 100%; font-size: 1.15rem; padding: 16px; }
 .actions { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { font: inherit; border-radius: 999px; padding: 8px 14px; border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; min-height: 40px; }
+.chip { font: inherit; border-radius: 999px; padding: 8px 14px; border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; min-height: 44px; }
 .chip.on { background: var(--accent); border-color: var(--accent); font-weight: 600; }
 .metric-list { columns: 2; margin: 0; padding-left: 1.1em; line-height: 1.6; }
 @media (max-width: 480px) { .metric-list { columns: 1; } }
@@ -175,3 +175,7 @@ input[type="number"] { font: inherit; width: 5.5ch; background: var(--panel-2); 
 .plan .price { font-size: 1.6rem; font-weight: 800; }
 .badge { align-self: flex-start; background: var(--accent); border-radius: 999px; padding: 2px 9px; font-size: 0.72rem; font-weight: 700; }
 a.btn { display: inline-flex; align-items: center; text-decoration: none; }
+
+.profile input, .profile select { min-height: 44px; font-size: 16px; }
+.session-alert { position: absolute; z-index: 3; top: 140px; left: 16px; right: 16px; max-width: 460px; margin: auto; background: var(--panel); border: 1px solid var(--mid); border-radius: 14px; padding: 16px; }
+.exit-confirm { z-index: 5; top: 25%; border-color: var(--line); }

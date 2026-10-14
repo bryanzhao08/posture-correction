@@ -18,6 +18,7 @@ export interface SessionHooks {
   onEvent(ev: EngineEvent): void;
   onState(state: string): void;
   onEnd?(): void;
+  onCameraStatus?(message: string | null): void;
 }
 
 const BONES: [number, number][] = [
@@ -55,6 +56,8 @@ abstract class BaseSession {
   engine: Engine;
   running = false;
   protected t0 = 0;
+  startedAt: string | null = null;
+  private stoppedElapsed = 0;
   protected lastState = "";
   constructor(profiles: Profiles, public opts: SessionOptions, protected hooks: SessionHooks) {
     this.engine = new Engine(profiles, opts.sport, opts.handedness, opts.view, opts.focus, opts.player, opts.drill);
@@ -67,7 +70,16 @@ abstract class BaseSession {
       this.hooks.onState(this.lastState);
     }
   }
-  get elapsed() { return this.running ? (performance.now() - this.t0) / 1000 : 0; }
+  protected beginClock() {
+    this.t0 = performance.now();
+    this.startedAt = new Date().toISOString();
+    this.stoppedElapsed = 0;
+  }
+  protected stopClock() {
+    this.stoppedElapsed = this.elapsed;
+    this.running = false;
+  }
+  get elapsed() { return !this.startedAt ? 0 : this.running ? (performance.now() - this.t0) / 1000 : this.stoppedElapsed; }
   abstract stop(): void;
 }
 
@@ -81,23 +93,55 @@ export class CameraSession extends BaseSession {
   frames: Frame[] = [];
   private lastCapture = -1;
 
+  private cancelled = false;
+  private video: HTMLVideoElement | null = null;
+  private removeListeners: (() => void)[] = [];
+
   async start(video: HTMLVideoElement, facingMode: "user" | "environment") {
-    const pose = loadPose();
-    this.stream = await navigator.mediaDevices.getUserMedia({
+    if (this.cancelled) return;
+    this.video = video;
+    // Observe rejection immediately, even if media permission rejects first.
+    const pose = loadPose().then((pl) => ({ pl }), (error: unknown) => ({ error }));
+    const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
       audio: false,
     });
-    video.srcObject = this.stream;
+    if (this.cancelled) {
+      stream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+    this.stream = stream;
+    video.srcObject = stream;
     video.muted = true;
     video.playsInline = true;
     await video.play();
-    const pl = await pose;
+    if (this.cancelled) return;
+    const result = await pose;
+    if (this.cancelled) return;
+    if ("error" in result) throw result.error;
+    const pl = result.pl;
     this.running = true;
-    this.t0 = performance.now();
+    const listen = (target: EventTarget, event: string, handler: () => void) => {
+      target.addEventListener(event, handler);
+      this.removeListeners.push(() => target.removeEventListener(event, handler));
+    };
+    listen(video, "pause", () => { if (this.running) void this.resume(); });
+    listen(video, "playing", () => {
+      if (!stream.getVideoTracks().some((t) => t.muted)) this.hooks.onCameraStatus?.(null);
+    });
+    for (const track of stream.getVideoTracks()) {
+      listen(track, "mute", () => {
+        this.hooks.onCameraStatus?.("Camera interrupted. Tap Resume camera; if it stays interrupted, turn spoken tips off or end and try again.");
+        void this.resume();
+      });
+      listen(track, "unmute", () => { void this.resume(); });
+      listen(track, "ended", () => this.hooks.onCameraStatus?.("Camera disconnected. End the session and start again."));
+    }
     const loop = () => {
       if (!this.running) return;
       this.raf = requestAnimationFrame(loop);
-      if (video.readyState < 2 || video.currentTime === this.lastVideoT) return;
+      if (video.paused || stream.getVideoTracks().some((t) => t.muted || t.readyState === "ended") ||
+          video.readyState < 2 || video.currentTime === this.lastVideoT) return;
       this.lastVideoT = video.currentTime;
       const now = performance.now();
       let joints: Joint[] | null = null;
@@ -117,6 +161,19 @@ export class CameraSession extends BaseSession {
     loop();
   }
 
+  /** Can be called directly by the Resume camera tap if autoplay recovery is denied. */
+  async resume() {
+    if (this.cancelled || !this.video || !this.stream) return;
+    try {
+      await this.video.play();
+      if (this.cancelled) return;
+      const interrupted = this.stream?.getVideoTracks().some((t) => t.muted || t.readyState === "ended");
+      this.hooks.onCameraStatus?.(interrupted ? "Camera interrupted. Resume camera or end and start again; spoken tips can be turned off." : null);
+    } catch {
+      if (!this.cancelled) this.hooks.onCameraStatus?.("Camera paused. Tap Resume camera to continue, or turn spoken tips off.");
+    }
+  }
+
   private capture(video: HTMLVideoElement, t: number) {
     this.lastCapture = t;
     const h = 240, w = Math.round((h * video.videoWidth) / Math.max(1, video.videoHeight));
@@ -129,17 +186,22 @@ export class CameraSession extends BaseSession {
   }
 
   beginCounting() {
-    this.t0 = performance.now();
+    if (this.cancelled || !this.running || this.counting) return;
+    this.beginClock();
     this.counting = true;
   }
 
   get isCounting() { return this.counting; }
 
   stop() {
-    this.running = false;
+    this.cancelled = true;
+    this.stopClock();
     cancelAnimationFrame(this.raf);
+    this.removeListeners.splice(0).forEach((remove) => remove());
     this.stream?.getTracks().forEach((t) => t.stop());
     this.stream = null;
+    if (this.video) this.video.srcObject = null;
+    this.video = null;
   }
 }
 
@@ -152,7 +214,7 @@ export class SampleSession extends BaseSession {
   }
   start() {
     this.running = true;
-    this.t0 = performance.now();
+    this.beginClock();
     const aspect = this.rec.aspect ?? 1;
     const tStart = this.rec.frames[0]?.t ?? 0;
     const loop = () => {
@@ -166,7 +228,7 @@ export class SampleSession extends BaseSession {
       }
       if (last) this.hooks.onFrame(last, aspect);
       if (this.i >= this.rec.frames.length) {
-        this.running = false;
+        this.stopClock();
         this.hooks.onEnd?.();
         return;
       }
@@ -176,10 +238,10 @@ export class SampleSession extends BaseSession {
   }
   get duration() {
     const f = this.rec.frames;
-    return f.length ? f[f.length - 1].t - f[0].t : 0;
+    return this.i > 0 ? f[this.i - 1].t - f[0].t : 0;
   }
   stop() {
-    this.running = false;
+    this.stopClock();
     cancelAnimationFrame(this.raf);
   }
 }
