@@ -60,7 +60,7 @@ export function trial(): Trial {
   const start = pref<number>("trialStart", Date.now());
   const end = new Date(start);
   end.setMonth(end.getMonth() + BETA.trialMonths);
-  const daysLeft = Math.max(0, Math.ceil((end.getTime() - Date.now()) / DAY));
+  const daysLeft = Math.max(0, Math.round((end.getTime() - Date.now()) / DAY));
   return { daysLeft, endsOn: end, expired: daysLeft === 0 };
 }
 
