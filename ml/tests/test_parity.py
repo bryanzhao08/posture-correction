@@ -160,3 +160,54 @@ def test_swift_corrections_match_python(tmp_path):
                          capture_output=True, text=True)
     print(run.stdout)
     assert run.returncode == 0, run.stdout[-6000:] + run.stderr[-2000:]
+
+
+def strokes_fixtures():
+    """Held-out descriptors plus native engine replays (left/right, views and sample rates)."""
+    import strokes
+    model = strokes.load_model()
+    examples = json.loads((Path(__file__).parent / "data" / "stroke_examples.json").read_text())["examples"]
+    cases = []
+    def expected(features):
+        return {"features": features, "prediction": strokes.predict(features, model)}
+    for ex in examples:
+        cases.append({"name": ex["name"], "features": ex["features"], "expected": expected(ex["features"])})
+    cases.append({"name": "all_missing", "features": {}, "expected": expected({})})
+    profiles = load_profiles()
+    for name, (sport, script, _) in CASES.items():
+        if sport != "tennis":
+            continue
+        for fps in (30.0, 60.0):
+            for view in ("front", "side", "back"):
+                hand = "left" if name.startswith("left") else "right"
+                rec = dict(recording(sport, script, fps=fps, noise=0.003, seed=7, handedness=hand), view=view)
+                eng, samples = strokes.analyze_with_samples(rec, profiles)
+                dom = "l" if hand == "left" else "r"
+                cases.append({"name": f"{name}-{fps}-{view}", "recording": rec,
+                              "expected": [expected(strokes.rep_features(samples, rep, dom)) for rep in eng.reps]})
+                if name == "tennis_mixed" and fps == 30.0 and view == "front":
+                    # Missing events, optional joints and the off wrist exercise imputation/filling.
+                    from dataclasses import replace
+                    rep = eng.reps[0].to_dict()
+                    rep["events"] = {}
+                    sparse = [replace(s, pts={k: v for k, v in s.pts.items() if k not in ("l_wrist", "nose", "l_ankle")}) for s in samples]
+                    f = strokes.rep_features(sparse, rep, dom)
+                    cases.append({"name": "missing_events_off_wrist_optional_joints", "samples": [vars(s) for s in sparse],
+                                  "rep": rep, "dom": dom, "expected": expected(f)})
+    return {"model_path": str(strokes.MODEL_PATH), "profiles": profiles, "cases": cases}
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js not installed")
+def test_web_strokes_match_python(tmp_path):
+    path = tmp_path / "strokes.json"
+    path.write_text(json.dumps(strokes_fixtures()))
+    run = subprocess.run(["node", str(WEB / "scripts" / "check.ts"), "--strokes", str(path)], capture_output=True, text=True)
+    assert run.returncode == 0, run.stdout + run.stderr
+
+
+@pytest.mark.skipif(shutil.which("swift") is None, reason="Swift toolchain not installed")
+def test_swift_strokes_match_python(tmp_path):
+    path = tmp_path / "strokes.json"
+    path.write_text(json.dumps(strokes_fixtures()))
+    run = subprocess.run([str(build_swift()), "--strokes", str(path)], capture_output=True, text=True)
+    assert run.returncode == 0, run.stdout + run.stderr

@@ -53,7 +53,7 @@ struct SessionIn: Codable {
     let startedAt: String
     let durationS: Double
     let summary: SessionSummary
-    let reps: [Rep]
+    var reps: [Rep]
     let appVersion: String
     let device: String
     var view: String? = nil
@@ -69,6 +69,12 @@ struct SessionIn: Codable {
         try c.encode(durationS, forKey: .durationS); try c.encode(summary, forKey: .summary)
         try c.encode(reps, forKey: .reps); try c.encode(appVersion, forKey: .appVersion)
         try c.encode(device, forKey: .device); try c.encode(view, forKey: .view); try c.encode(focus, forKey: .focus)
+    }
+    /// Classifier estimates are local-only, even when ordinary session scores are synced.
+    var forUpload: SessionIn {
+        var copy = self
+        copy.reps = reps.map { rep in var local = rep; local.strokeEstimate = nil; return local }
+        return copy
     }
 }
 struct SessionListItem: Codable, Identifiable {

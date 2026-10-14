@@ -26,6 +26,8 @@ targets:
         buildPhase: resources
       - path: ../shared/cue_catalog.json
         buildPhase: resources
+      - path: ../shared/stroke_model.json
+        buildPhase: resources
       - path: ../shared/sport_profiles.json
         buildPhase: resources
     dependencies:
@@ -54,6 +56,7 @@ targets:
       - path: FormCoachUITests
         excludes:
           - Artifacts
+      - path: FormCoach/Services/Models.swift
       - path: FormCoach/Camera/OrangeMarkerTracker.swift
       - path: FormCoach/Demos/DemoMotion.swift
       - path: FormCoach/Demos/DemoMotionTable.swift

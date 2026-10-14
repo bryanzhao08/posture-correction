@@ -26,6 +26,10 @@ struct SessionCapture {
 
 // All callers own this object on their source's serial queue. Counting/scoring stay in FormCore.
 final class PoseSessionPipeline {
+    private static let strokeModel: StrokeModel? = {
+        guard let url = Bundle.main.url(forResource:"stroke_model",withExtension:"json"), let data = try? Data(contentsOf:url) else { return nil }
+        return try? StrokeModel.load(from:data)
+    }()
     private let engine: FormEngine
     private let feedback = FeedbackBuffer()
     let replayRecorder: ReplayRecorder?
@@ -51,7 +55,7 @@ final class PoseSessionPipeline {
          player: Player? = nil, drill: String? = nil) {
         replayRecorder = UserDefaults.standard.bool(forKey:"saveReplays") ? ReplayRecorder() : nil
         engine = FormEngine(profiles: profiles, sport: sport, handedness: handedness, view: view, focus: focus,
-                            player: player, drill: drill)
+                            player: player, drill: drill, strokeModel: sport == "tennis" ? Self.strokeModel : nil)
         // the engine's profile carries the player's level and the drill's focus, so fix cards match the score
         self.profile = engine.profile
         self.view = view; self.focus = focus

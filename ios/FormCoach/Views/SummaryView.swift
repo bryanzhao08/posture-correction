@@ -41,7 +41,7 @@ struct ServerDetailView: View {
         Group {
             if let session = session {
                 SummaryContent(sport: session.sport, startedAt: session.startedAt, duration: session.durationS,
-                               summary: session.summary, reps: session.reps, comparison: session.comparison,
+                               summary: session.summary, reps: state.sessions.first { $0.id == session.clientID }?.payload.reps ?? session.reps, comparison: session.comparison,
                                checkpoint: session.checkpoint,localID:state.sessions.first { $0.id == session.clientID }?.id,replays:state.sessions.first { $0.id == session.clientID }?.replays ?? []) { EmptyView() }
             } else if let error = error {
                 VStack(spacing: 16) {
@@ -122,6 +122,10 @@ struct SummaryContent<Status: View>: View {
                         Text("Hand speed \(Int((speeds.reduce(0, +) / Double(speeds.count)).rounded())) \(unit) average · \(Int(speeds.max()!.rounded())) fastest")
                             .font(.subheadline)
                         Text("Estimated from your height. The camera can't see motion toward it.").font(.caption).foregroundStyle(.secondary)
+                    }
+                    if sport == "tennis", !reps.isEmpty {
+                        Text("Stroke estimates: " + StrokeEstimate.counts(reps)).font(.subheadline)
+                            .accessibilityIdentifier("summary.stroke.counts")
                     }
                     Text(Display.date(startedAt), style: .date).font(.subheadline).foregroundStyle(.secondary)
                     Text("\(Int(duration / 60)) min \(Int(duration) % 60) sec · Active \(Int(summary.activeS)) sec · Rest \(Int(summary.passiveS)) sec")
@@ -219,12 +223,15 @@ struct SummaryContent<Status: View>: View {
                             Button { selectedCard=card } label: {
                                 HStack {
                                     RepFreezeFrame(card:card).frame(width:48,height:72)
-                                    Text("Rep \(index+1) · \(Display.score(rep.score)) · \(card.shortLabel)")
+                                    VStack(alignment:.leading,spacing:4) {
+                                        Text("Rep \(index+1) · \(Display.score(rep.score)) · \(card.shortLabel)")
+                                        if sport == "tennis" { Text(StrokeEstimate.display(rep.strokeEstimate)?.text ?? "Stroke unclear · estimate").font(.caption).foregroundStyle(.secondary) }
+                                    }
                                 }
                             }.buttonStyle(.plain).accessibilityIdentifier("summary.feedback.\(index+1)")
                         }
                         let shortLabel=rep.cues.first.map { state.profiles?.sports[sport]?.effective(for:summary.view).shortLabel(forCue:$0) ?? $0 }
-                        DisclosureGroup("Rep \(index + 1) · \(rep.type.capitalized) · \(Display.score(rep.score))/100" + (shortLabel.map { " · " + $0 } ?? "")) {
+                        DisclosureGroup("Rep \(index + 1) · \(sport == "tennis" ? (StrokeEstimate.display(rep.strokeEstimate)?.text ?? "Stroke unclear · estimate") : rep.type.capitalized) · \(Display.score(rep.score))/100" + (shortLabel.map { " · " + $0 } ?? "")) {
                             ForEach(rep.metrics.keys.sorted(), id: \.self) { metric in
                                 let spec = state.profiles?.sports[sport]?.effective(for: summary.view).metrics.first { $0.id == metric }
                                 VStack(alignment: .leading, spacing: 4) {

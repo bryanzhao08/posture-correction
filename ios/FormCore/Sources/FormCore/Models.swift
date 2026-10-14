@@ -153,8 +153,10 @@ public struct Rep: Codable {
     public let score: Double
     public let cues: [String]
     public let peakSpeed: Double
+    public var strokeEstimate: StrokePrediction? = nil
     enum CodingKeys: String, CodingKey {
         case tStart = "t_start", tEnd = "t_end", type, events, metrics, scores, score, cues
+        case strokeEstimate = "stroke_estimate"
         case peakSpeed = "peak_speed"
     }
 }

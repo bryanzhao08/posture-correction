@@ -1,9 +1,13 @@
 // Parity check against the Python engine: node scripts/check.ts <fixtures.json> <sport_profiles.json>
 // Fixtures are written by ml/tests/test_parity.py (same format formcore-check reads).
+import { repFeatures, predict, type StrokeModel } from "../src/engine/strokes.ts";
+import { Engine, type Sample } from "../src/engine/engine.ts";
 import { readFileSync } from "node:fs";
 import { analyzeRecording } from "../src/engine/engine.ts";
 import { summarize } from "../src/engine/scoring.ts";
 import { correctedPose } from "../src/engine/corrections.ts";
+
+if (process.argv[2] === "--strokes") checkStrokes(process.argv[3]);
 
 if (process.argv[2] === "--corrections") checkCorrections(process.argv[3]);
 
@@ -70,3 +74,34 @@ for (const fx of fixtures) {
 }
 console.log(`${fixtures.length - failed}/${fixtures.length} fixtures match`);
 process.exit(failed ? 1 : 0);
+
+function checkStrokes(path: string): never {
+  const fixture = JSON.parse(readFileSync(path,"utf8"));
+  const model = JSON.parse(readFileSync(fixture.model_path,"utf8")) as StrokeModel;
+  let bad = 0, total = 0;
+  function check(name: string, features: Record<string,number|null>, expected: any) {
+    total++;
+    const prediction = predict(features,model);
+    let ok = JSON.stringify(Object.keys(features).sort()) === JSON.stringify(Object.keys(expected.features).sort());
+    for(const [key,value] of Object.entries(expected.features)) {
+      const got=features[key];
+      if(value==null ? got!=null : got==null||!Number.isFinite(got)||Math.abs(got-(value as number))>1e-6)ok=false;
+    }
+    for(const [task,result] of Object.entries(expected.prediction) as [string,any][]) {
+      if(prediction[task]?.label!==result.label)ok=false;
+      for(const [label,p] of Object.entries(result.probs))if(!Number.isFinite(prediction[task].probs[label])||Math.abs(prediction[task].probs[label]-(p as number))>1e-6)ok=false;
+    }
+    if(!ok){bad++;console.log(`FAIL stroke ${name}`)}
+  }
+  for(const c of fixture.cases) {
+    if(c.recording) {
+      const rec=c.recording,eng=new Engine(fixture.profiles,rec.sport,rec.handedness??"right",rec.view??null,rec.focus??null);
+      const samples: Sample[]=[];
+      for(const fr of rec.frames){const last=eng.buf.at(-1);eng.push(fr.t,fr.j,rec.aspect??1);const next=eng.buf.at(-1);if(next&&next!==last)samples.push(next)}
+      if(eng.reps.length!==c.expected.length){bad++;console.log(`FAIL ${c.name}: rep count`);continue}
+      eng.reps.forEach((rep,i)=>check(`${c.name}/${i}`,repFeatures(samples,rep,eng.dom),c.expected[i]));
+    }else check(c.name,c.samples?repFeatures(c.samples,c.rep,c.dom):c.features,c.expected);
+  }
+  console.log(`${total-bad}/${total} stroke descriptors and probabilities match (absolute 1e-6)`);
+  process.exit(bad?1:0);
+}

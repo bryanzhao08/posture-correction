@@ -3,6 +3,7 @@
 //
 // Joints arrive normalised (0..1, origin top-left, y down) and are converted to height units
 // (x * aspect). Body-relative values are measured from the mid-hip in torso lengths.
+import { repFeatures, predict, type StrokePrediction } from "./strokes.ts";
 import { ANALYZERS, dist, mid, type Metrics } from "./sports.ts";
 import { scoreRep } from "./scoring.ts";
 import { personalize, type Drill, type Player } from "./personalize.ts";
@@ -47,6 +48,7 @@ export interface Rep {
   score: number;
   cues: string[];
   peak_speed: number;
+  stroke_estimate?: StrokePrediction;
 }
 
 export interface EngineEvent {
@@ -328,6 +330,9 @@ export class Engine implements Ctx {
       t_start: seg[0].t, t_end: seg[seg.length - 1].t, type: repType, events: ev, metrics, scores,
       score: total, cues, peak_speed: stats.peak_speed,
     };
+    if (this.sport === "tennis") {
+      try { rep.stroke_estimate = predict(repFeatures(seg, rep, this.dom), undefined, ["coarse", "groundstroke_spin"]); } catch { /* Keep counting if tracking cannot support an estimate. */ }
+    }
     this.reps.push(rep);
     // Only a counted rep closes off its frames; a rejected take-back may belong to the next motion.
     this.lastSegEndT = t;

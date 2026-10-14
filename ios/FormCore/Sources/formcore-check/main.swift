@@ -7,6 +7,62 @@ import FormCore
 //             "expected": {"reps": [Rep JSON], "rejected": {reason: n}, "score": Double?}}]
 
 let args = CommandLine.arguments
+if args.count == 3, args[1] == "--strokes" {
+    let object = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: args[2]))) as! [String: Any]
+    let model = try StrokeModel.load(from: Data(contentsOf: URL(fileURLWithPath: object["model_path"] as! String)))
+    let profiles = try Profiles.load(from: JSONSerialization.data(withJSONObject: object["profiles"]!))
+    let cases = object["cases"] as! [[String: Any]]
+    var total = 0, bad = 0
+    func features(_ value: Any) -> StrokeFeatures {
+        (value as! [String: Any]).mapValues { $0 as? Double }
+    }
+    func check(_ name: String, _ actual: StrokeFeatures, _ expected: [String: Any]) {
+        total += 1
+        let f = features(expected["features"]!)
+        var ok = Set(actual.keys) == Set(f.keys)
+        for key in f.keys {
+            let a = actual[key] ?? nil, e = f[key] ?? nil
+            if let a = a, let e = e { if !a.isFinite || !e.isFinite || abs(a-e) > 1e-6 { ok = false; print("feature \(key): \(a) vs \(e)") } }
+            else if (a == nil) != (e == nil) { ok = false }
+        }
+        let got = model.predict(actual)
+        for (task, result) in expected["prediction"] as! [String: [String: Any]] {
+            if got[task]?.label != result["label"] as? String { ok = false }
+            for (label, p) in result["probs"] as! [String: Double] {
+                if abs((got[task]?.probs[label] ?? -1)-p) > 1e-6 { ok = false }
+            }
+        }
+        if !ok { bad += 1; print("MISMATCH stroke \(name)") }
+    }
+    for c in cases {
+        let name = c["name"] as! String
+        if let rec = c["recording"] as? [String: Any] {
+            let hand: Handedness = rec["handedness"] as? String == "left" ? .left : .right
+            let eng = FormEngine(profiles: profiles,sport:"tennis",handedness:hand,view:rec["view"] as? String,focus:rec["focus"] as? String)
+            var samples: [Sample] = []
+            for fr in rec["frames"] as! [[String: Any]] {
+                let joints = (fr["j"] as! [[Double]]).map { Optional(JointObservation(x:$0[0],y:$0[1],confidence:$0[2])) }
+                let before = eng.lastSample?.t
+                _ = eng.push(t:fr["t"] as! Double,joints:joints,aspect:rec["aspect"] as? Double ?? 1)
+                if let s = eng.lastSample, s.t != before { samples.append(s) }
+            }
+            let expected = c["expected"] as! [[String: Any]]
+            if eng.reps.count != expected.count { bad += 1; print("MISMATCH \(name) rep count"); continue }
+            for (i,rep) in eng.reps.enumerated() { check("\(name)/\(i)",try repFeatures(samples,rep:rep,dominant:hand == .left ? "l" : "r"),expected[i]) }
+        } else if let data = c["samples"] as? [[String: Any]] {
+            let samples = data.map { s -> Sample in
+                let pts = (s["pts"] as! [String: [Double]]).mapValues { Point(x:$0[0],y:$0[1]) }
+                let hip = s["hip"] as! [Double]
+                return Sample(t:s["t"] as! Double,pts:pts,torso:s["torso"] as! Double,hip:Point(x:hip[0],y:hip[1]),rx:s["rx"] as! Double,ry:s["ry"] as! Double,speed:s["speed"] as! Double)
+            }
+            let rep = try JSONDecoder().decode(Rep.self,from:JSONSerialization.data(withJSONObject:c["rep"]!))
+            check(name,try repFeatures(samples,rep:rep,dominant:c["dom"] as! String),c["expected"] as! [String: Any])
+        } else { check(name,features(c["features"]!),c["expected"] as! [String: Any]) }
+    }
+    print("\(total-bad)/\(total) stroke descriptors and probabilities match (absolute 1e-6)")
+    exit(bad == 0 ? 0 : 1)
+}
+
 if args.count == 3, args[1] == "--corrections" {
     let data = try Data(contentsOf: URL(fileURLWithPath: args[2]))
     let fixtures = try JSONSerialization.jsonObject(with: data) as! [[String: Any]]

@@ -216,7 +216,7 @@ final class AppState: ObservableObject {
             guard epoch == generation, var local = sessions.first(where: { $0.id == id }) else { return }
             do {
                 if local.server == nil {
-                    let uploaded: SessionOut = try await api.post("/sessions", body: local.payload)
+                    let uploaded: SessionOut = try await api.post("/sessions", body: local.payload.forUpload)
                     guard epoch == generation else { return }
                     // Preserve consent changes made during this request.
                     local = sessions.first(where: { $0.id == id }) ?? local

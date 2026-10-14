@@ -1,4 +1,5 @@
 import SwiftUI
+import FormCore
 
 struct RepFreezeFrame: View {
     let card: RepCard
@@ -16,10 +17,14 @@ struct LastRepCard: View {
             VStack(alignment:.leading,spacing:4) {
                 RepFreezeFrame(card:card)
                 Text(card.shortLabel).font(.caption.bold()).lineLimit(3)
+                if card.sport == "tennis" {
+                    Text(StrokeEstimate.display(card.rep.strokeEstimate)?.text ?? "Stroke unclear · estimate")
+                        .font(.caption2).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("rep.stroke.estimate")
+                }
                 Text("Rep \(card.index) · \(Display.score(card.rep.score))").font(.caption).monospacedDigit()
             }.padding(6).background(.black.opacity(0.85),in:RoundedRectangle(cornerRadius:12))
         }.buttonStyle(.plain).accessibilityIdentifier("rep.feedback.card")
-            .accessibilityLabel("Last rep \(card.index), \(card.shortLabel), score \(Display.score(card.rep.score)). Open correction")
+            .accessibilityLabel("Last rep \(card.index), \(card.shortLabel), score \(Display.score(card.rep.score)). Open correction" + (card.sport == "tennis" ? ". " + (StrokeEstimate.display(card.rep.strokeEstimate)?.text ?? "Stroke unclear · estimate") : ""))
     }
 }
 struct RepFeedbackDetail: View {

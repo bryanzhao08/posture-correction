@@ -8,14 +8,17 @@ public struct Point: Codable, Equatable {
     public init(x: Double, y: Double) { self.x = x; self.y = y }
 }
 
-struct Sample {
-    let t: Double
-    let pts: [String: Point]
-    let torso: Double
-    let hip: Point
-    let rx: Double
-    let ry: Double
-    let speed: Double
+public struct Sample {
+    public let t: Double
+    public let pts: [String: Point]
+    public let torso: Double
+    public let hip: Point
+    public let rx: Double
+    public let ry: Double
+    public let speed: Double
+    public init(t: Double, pts: [String: Point], torso: Double, hip: Point, rx: Double, ry: Double, speed: Double) {
+        self.t=t; self.pts=pts; self.torso=torso; self.hip=hip; self.rx=rx; self.ry=ry; self.speed=speed
+    }
 }
 
 struct SegmentStats {
@@ -85,6 +88,8 @@ public final class FormEngine {
     private var gates: Gates { profile.gates }
 
     private var buf: [Sample] = []
+    public var lastSample: Sample? { buf.last }
+    private let strokeModel: StrokeModel?
     private var sm: [String: (x: Double, y: Double, t: Double)] = [:]
     private var torso: Double?
     private var prevRel: Point?
@@ -110,10 +115,11 @@ public final class FormEngine {
 
     /// `player` and `drill` adapt the scoring (see Personalize.swift); without them it is unchanged.
     public init(profiles: Profiles, sport: String, handedness: Handedness, view: String? = nil, focus: String? = nil,
-                player: Player? = nil, drill: String? = nil) {
+                player: Player? = nil, drill: String? = nil, strokeModel: StrokeModel? = nil) {
         guard let profile = profiles.sports[sport] else {
             preconditionFailure("unknown sport \(sport)")
         }
+        self.strokeModel = strokeModel
         self.sport = sport
         self.view = (view?.isEmpty == false ? view : nil) ?? profile.defaultView ?? "front"
         self.focus = focus
@@ -342,9 +348,12 @@ public final class FormEngine {
         }
         let scored = scoreRep(result.metrics, result.type, profile.metrics, scoring)
         guard let total = scored.total else { return reject("no_metrics") }
-        let rep = Rep(tStart: seg[0].t, tEnd: seg[seg.count - 1].t, type: result.type, events: result.events,
+        var rep = Rep(tStart: seg[0].t, tEnd: seg[seg.count - 1].t, type: result.type, events: result.events,
                       metrics: result.metrics, scores: scored.scores, score: total, cues: scored.cues,
                       peakSpeed: stats.peakSpeed)
+        if sport == "tennis", let model = strokeModel, let f = try? repFeatures(seg,rep:rep,dominant:dom) {
+            rep.strokeEstimate = model.predict(f,tasks:["coarse","groundstroke_spin"])
+        }
         reps.append(rep)
         // only a counted rep closes off its frames; a rejected take-back may belong to the next motion
         lastSegEndT = t

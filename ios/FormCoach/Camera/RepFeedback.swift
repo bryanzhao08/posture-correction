@@ -85,7 +85,8 @@ final class FeedbackBuffer {
     }
     func nearest(_ time: Double) -> FeedbackFrame? { frames.min { abs($0.t-time) < abs($1.t-time) } }
     func card(rep: Rep,index: Int,sport: String,profile: SportProfile,dominant: String) -> RepCard? {
-        guard let first=rep.cues.first else { return nil }
+        guard rep.cues.first != nil || sport == "tennis" else { return nil }
+        let first = rep.cues.first ?? ""
         // Prefer a rule we can draw, retaining a plain skeleton for timing/rotation cues.
         let cue=rep.cues.first { cue in
             profile.metric(forCue:cue).flatMap { correctionEvent(analyzer:profile.analyzer,metric:$0.id) } != nil
@@ -103,7 +104,7 @@ final class FeedbackBuffer {
         let recorded=poses.filter { $0.t >= rep.tStart-0.05 && $0.t <= rep.tEnd+0.05 && $0.pose.count >= 8 }.map { (t:$0.t,pose:$0.pose) }
         let motion=fixMotion(recorded,keyPose:correction == nil ? nil : frame.pose,ghost:correction,
                              tStart:rep.tStart,keyT:frame.t,tEnd:rep.tEnd)
-        return RepCard(index:index,sport:sport,rep:rep,cue:cue,shortLabel:profile.shortLabel(forCue:cue),
+        return RepCard(index:index,sport:sport,rep:rep,cue:cue,shortLabel:cue.isEmpty ? "No correction needed" : profile.shortLabel(forCue:cue),
                        metric:spec?.id,frame:frame,corrected:correction,motion:motion)
     }
     func clear() { frames.removeAll(); poses.removeAll(); lastImageTime = -Double.infinity }

@@ -302,6 +302,33 @@ final class FormCoachFlowTests: XCTestCase {
         close("rep.feedback.close")
     }
 
+    func testTennisStrokeEstimatesStayInLiveCardAndSummary() {
+        register()
+        let tennis = app.buttons.containing(NSPredicate(format:"label CONTAINS 'Tennis'")).firstMatch
+        for _ in 0..<5 where !tennis.isHittable { app.swipeUp() }
+        XCTAssertTrue(tennis.waitForExistence(timeout:20)); tennis.tap()
+        XCTAssertTrue(app.buttons["training.start"].waitForExistence(timeout:10))
+        app.segmentedControls["training.view"].buttons["Face-on"].tap()
+        startPractice()
+        let card = app.buttons["rep.feedback.card"]
+        XCTAssertTrue(card.waitForExistence(timeout:40))
+        XCTAssertTrue(card.label.contains("estimate"))
+        XCTAssertFalse(card.label.contains("kick"))
+        shot("tennis-stroke-estimate-live")
+        XCTAssertTrue(app.staticTexts["Demo complete · tap End session"].waitForExistence(timeout:60))
+        app.buttons["End session"].tap()
+        XCTAssertTrue(app.navigationBars["Session summary"].waitForExistence(timeout:20))
+        let counts = app.staticTexts["summary.stroke.counts"]
+        XCTAssertTrue(counts.waitForExistence(timeout:10)); XCTAssertTrue(counts.label.contains("Stroke estimates:"))
+        shot("tennis-stroke-estimate-summary")
+        for _ in 0..<12 {
+            let row = app.buttons["summary.feedback.1"]
+            if row.isHittable { break }; app.swipeUp()
+        }
+        XCTAssertTrue(app.buttons["summary.feedback.1"].label.contains("estimate"))
+        shot("tennis-stroke-estimate-reps")
+    }
+
     /// Height, level and a drill adapt the session: rep goal and hand speed live, level and focus in the summary.
     func testDrillGoalHandSpeedAndLevel() {
         app.terminate()

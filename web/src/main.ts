@@ -1,6 +1,7 @@
 import "./style.css";
 import profilesJson from "../../shared/sport_profiles.json";
 import catalogJson from "../../shared/cue_catalog.json";
+import { strokeEstimate, strokeCounts } from "./engine/strokes.ts";
 import { effectiveProfile, type EngineEvent, type Joint, type Recording, type Rep } from "./engine/engine.ts";
 import { summarize, targetFor, type Summary } from "./engine/scoring.ts";
 import { CameraSession, SampleSession, drawSkeleton, type SessionOptions } from "./app/session.ts";
@@ -350,6 +351,7 @@ async function live(source: "camera" | "sample") {
         <button class="fixcard" id="card" hidden aria-label="Last rep: open the fix">
           <canvas id="card-canvas" width="300" height="400"></canvas>
           <span class="fix-label" id="card-label"></span>
+          <span class="stroke-tag" id="card-stroke" hidden></span>
           <span class="fix-score" id="card-score"></span>
         </button>
         <div class="row between controls">
@@ -415,6 +417,9 @@ async function live(source: "camera" | "sample") {
     c.height = Math.round(w * 1.25 * dpr);
     drawCard(c, card);
     $("card-label").textContent = card.short ?? "";
+    const stroke = strokeEstimate(session?.engine.reps[card.repIndex]?.stroke_estimate);
+    $("card-stroke").hidden = opts.sport !== "tennis";
+    $("card-stroke").textContent = stroke?.text ?? "Stroke unclear · estimate";
     $("card-score").textContent = `Rep ${card.repIndex + 1} · ${fmt(card.score)}`;
     el.onclick = () => openCard(card);
   };
@@ -710,6 +715,7 @@ async function summaryScreen(s: StoredSession, save: boolean, cards: FixCard[] =
     <p class="muted">${drill ? `${esc(drill.label)} · ` : ""}${s.level ? `scored as ${esc(profiles.player.levels[s.level]?.label ?? s.level)}` : ""}</p>
     ${s.source === "sample" ? `<p class="notice">This was a sample recording, so it isn't saved to your history.</p>` : ""}
     ${s.summary.rep_count === 0 && s.source === "camera" ? `<p class="notice">No reps were counted, so nothing was saved. Make sure your whole body is in view and swing at full speed.</p>` : ""}
+    ${s.sport === "tennis" && s.reps.length ? `<p class="notice" id="stroke-counts"><strong>Stroke estimates:</strong> ${esc(strokeCounts(s.reps))}</p>` : ""}
     <section class="stats">
       <div class="stat big"><div class="num">${fmt(sc)}</div><div class="lbl">Session score</div></div>
       <div class="stat"><div class="num">${s.summary.rep_count}${goal ? `<span class="of">/${goal}</span>` : ""}</div><div class="lbl">${goal ? (s.summary.rep_count >= goal ? "Goal reached ✓" : "Reps of goal") : "Reps counted"}</div></div>
@@ -733,7 +739,7 @@ async function summaryScreen(s: StoredSession, save: boolean, cards: FixCard[] =
       <tbody>${metricRows(s)}</tbody></table></div>
       <p class="muted small">Distances are measured in your own torso lengths (shoulders to hips), so they work at any height or camera distance${s.height_cm ? "; the converted values use your height" : ""}. Targets follow your level${s.drill ? " and the drill's focus" : ""}.</p></section>` : ""}
     ${s.reps.length ? `<section class="card"><h3>Reps</h3><ol class="reps">${s.reps.map((r: Rep, i: number) =>
-      `<li><span class="rs">${fmt(r.score)}</span> <span class="muted">${esc(r.type)}</span> ${r.cues[0] ? `· ${esc(shortLabel(prof, r.cues[0]))}` : ""}
+      `<li><span class="rs">${fmt(r.score)}</span> <span class="muted">${esc(s.sport === "tennis" ? (strokeEstimate(r.stroke_estimate)?.text ?? "Stroke unclear · estimate") : r.type)}</span> ${r.cues[0] ? `· ${esc(shortLabel(prof, r.cues[0]))}` : ""}
         ${cards.some((c) => c.repIndex === i) ? `<button class="btn link small" data-card="${i}">See the fix</button>` : ""}</li>`).join("")}</ol></section>` : ""}
     <dialog id="explain"></dialog>
     ${Object.keys(s.summary.rejected).length ? `<p class="muted small">Ignored motions: ${Object.entries(s.summary.rejected).map(([k, v]) => `${v} × ${REJECT_LABEL[k] ?? k}`).join("; ")}.</p>` : ""}

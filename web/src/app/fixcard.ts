@@ -59,7 +59,7 @@ function eventTime(rep: Rep, name: string | null): number | null {
 /** Builds the card for a rep just counted. `frames` is the recent camera history (may be empty). */
 export function buildCard(eng: Engine, rep: Rep, repIndex: number, frames: Frame[], aspect: number,
                           mirrored: boolean): FixCard | null {
-  if (!rep.cues.length) return null;
+  if (!rep.cues.length && eng.sport !== "tennis") return null;
   const analyzer: string = eng.profile.analyzer;
   // Show the ghost for the worst cue that has a pose fix; otherwise the worst cue without one.
   let chosen: { cue: string; spec: Spec } | null = null;
@@ -67,7 +67,7 @@ export function buildCard(eng: Engine, rep: Rep, repIndex: number, frames: Frame
     const m = specForCue(eng.profile, cue);
     if (m && EVENTS[analyzer]?.[m.spec.id]) { chosen = { cue, spec: m.spec }; break; }
   }
-  const cue = chosen?.cue ?? rep.cues[0];
+  const cue = chosen?.cue ?? rep.cues[0] ?? "";
   const metric = chosen?.spec.id ?? specForCue(eng.profile, cue)?.spec.id;
   const rule = metric ? EVENTS[analyzer]?.[metric] : undefined;
   const keyT = (rule && eventTime(rep, rule[0])) ?? rep.events.contact ?? rep.events.impact ?? rep.events.release ?? rep.t_end;
@@ -95,7 +95,7 @@ export function buildCard(eng: Engine, rep: Rep, repIndex: number, frames: Frame
     frozen = { ...fr, image };
   }
   return {
-    repIndex, score: rep.score, cue, short: shortLabel(eng.profile, cue), pose, ghost,
+    repIndex, score: rep.score, cue: cue || null, short: cue ? shortLabel(eng.profile, cue) : "No correction needed", pose, ghost,
     frame: frozen, aspect, mirrored,
     motion: fixMotion(seg.map((x) => ({ t: x.t, pose: { ...x.pts } })), at && ghost ? at.pts : null, ghost,
                       rep.t_start, at ? at.t : keyT, rep.t_end),
