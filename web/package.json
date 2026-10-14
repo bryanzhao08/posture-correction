@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "check": "node scripts/check.ts",
     "predev": "node scripts/fetch-assets.mjs",
-    "prebuild": "node scripts/fetch-assets.mjs"
+    "prebuild": "node scripts/fetch-assets.mjs",
+    "set-password": "node scripts/set-password.mjs"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^0.10.21"

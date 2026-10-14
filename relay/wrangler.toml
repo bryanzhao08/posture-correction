@@ -1,0 +1,25 @@
+# Cloudflare Worker that relays FormCoach beta sign-ups to the owner via Resend.
+# Deploy steps: see ../docs/SIGNUP_RELAY.md
+name = "formcoach-signup"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Comma-separated list of origins allowed to POST /signup.
+ALLOWED_ORIGINS = "https://bryanzhao08.github.io,http://localhost:5173,http://localhost:4317"
+# Resend's sandbox sender. It can only deliver to the Resend account owner's own
+# address, which is exactly what we need for owner notifications.
+FROM_EMAIL = "FormCoach Beta <onboarding@resend.dev>"
+# Leave "false" unless FROM_EMAIL uses a domain you have verified in Resend.
+SEND_CONFIRMATION = "false"
+
+# Secrets (set with `npx wrangler secret put <NAME>`, never commit them):
+#   RESEND_API_KEY
+#   OWNER_EMAIL
+
+# Optional KV namespace for durable rate limiting. Create it with
+#   npx wrangler kv namespace create SIGNUPS
+# then uncomment and paste the id it prints:
+# [[kv_namespaces]]
+# binding = "SIGNUPS"
+# id = "<paste id here>"

@@ -158,3 +158,20 @@ input[type="number"] { font: inherit; width: 5.5ch; background: var(--panel-2); 
 .sw.red { background: #ff5a5f; }
 .sw.green { background: #3ddc84; margin-left: 8px; }
 .tabs { display: flex; gap: 8px; margin-bottom: 10px; }
+
+/* beta: gate, trial banner, plans */
+.stack { display: flex; flex-direction: column; gap: 10px; }
+.stack input, .stack select, .stack textarea { font: inherit; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; min-height: 44px; }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.notice.trial { display: block; width: 100%; text-align: left; font: inherit; color: var(--text); cursor: pointer; border-color: var(--accent); }
+.notice.trial.ok { border-color: var(--good); }
+.notice.trial.bad { border-color: var(--bad); }
+.plans { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin: 16px 0; }
+.plan { position: relative; display: flex; flex-direction: column; gap: 4px; cursor: pointer; }
+.plan input { position: absolute; opacity: 0; }
+.plan.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.plan:focus-within { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+.plan .name { font-weight: 700; }
+.plan .price { font-size: 1.6rem; font-weight: 800; }
+.badge { align-self: flex-start; background: var(--accent); border-radius: 999px; padding: 2px 9px; font-size: 0.72rem; font-weight: 700; }
+a.btn { display: inline-flex; align-items: center; text-decoration: none; }

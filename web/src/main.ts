@@ -7,6 +7,7 @@ import { CameraSession, SampleSession, drawSkeleton, type SessionOptions } from 
 import { clearSessions, deleteSession, listSessions, pref, saveSession, setPref, storageIsPersistent,
          type StoredSession } from "./app/store.ts";
 import { loadPose } from "./app/pose.ts";
+import { gate, pricing, trialBanner } from "./app/beta.ts";
 import { buildCard, drawCard, playMotion, shortLabel, type FixCard } from "./app/fixcard.ts";
 import { drillsFor, findDrill, personalize, type Drill } from "./engine/personalize.ts";
 import { cmToFtIn, ftInToCm, handSpeed, heightLabel, loadPlayer, minPhoneDistance, savePlayer, speedUnit,
@@ -95,6 +96,7 @@ async function home() {
       <strong>Runs entirely in your browser.</strong> Your camera video never leaves this device, and sessions
       are saved only in this browser. Put your phone on a tripod (or lean it on something) a few metres away.
     </section>
+    ${trialBanner()}
     <h2>Choose a sport</h2>
     <div class="grid sports">
       ${SPORTS.map((s) => `<button class="card sport" data-sport="${s}">
@@ -173,6 +175,7 @@ async function home() {
     note.textContent = cm ? `Saved: ${heightLabel(cm, pl.units)}.` : "Height cleared.";
   });
   (app.querySelector("#history") as HTMLButtonElement).onclick = () => go(history);
+  (app.querySelector("#plans") as HTMLButtonElement).onclick = () => go(() => pricing(app, () => go(home)));
   void loadPose().catch(() => undefined); // warm up the model while the user reads
 }
 
@@ -701,4 +704,4 @@ function toCsv(sessions: StoredSession[]) {
   return rows.map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(",")).join("\n");
 }
 
-go(home);
+gate(app, () => go(home));

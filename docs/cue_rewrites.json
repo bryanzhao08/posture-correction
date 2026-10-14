@@ -1,0 +1,470 @@
+[
+  {
+    "sport": "golf",
+    "view": null,
+    "metric": "tempo_ratio",
+    "cue_low_old": "Your backswing is rushed. Take the club back slower and smoother.",
+    "cue_low": "Your backswing is rushed. Take the club back slower and smoother.",
+    "short_low": "Smooth backswing",
+    "cue_high_old": "Your downswing is quick relative to a slow backswing. Keep one smooth rhythm.",
+    "cue_high": "Your downswing is too quick. Keep one smooth rhythm from back to front.",
+    "short_high": "Smooth rhythm"
+  },
+  {
+    "sport": "golf",
+    "view": null,
+    "metric": "lead_arm_top",
+    "cue_low_old": "Your lead arm is collapsing at the top. Keep it long and wide.",
+    "cue_low": "Your lead arm is bending at the top. Keep it straight and push your hands away from you.",
+    "short_low": "Straight lead arm"
+  },
+  {
+    "sport": "golf",
+    "view": null,
+    "metric": "head_sway",
+    "cue_high_old": "Your head is drifting sideways. Keep it centred over the ball until impact.",
+    "cue_high": "Your head is moving sideways. Keep it centered over the ball until you hit it.",
+    "short_high": "Keep head still"
+  },
+  {
+    "sport": "golf",
+    "view": null,
+    "metric": "head_lift",
+    "cue_low_old": "You are standing up through impact. Stay in your posture.",
+    "cue_low": "You are standing up as you hit. Stay bent over in your starting posture.",
+    "short_low": "Stay down",
+    "cue_high_old": "You are dipping down into the ball. Keep your height level.",
+    "cue_high": "You are dropping your head down. Keep your height level.",
+    "short_high": "Don't dip down"
+  },
+  {
+    "sport": "golf",
+    "view": null,
+    "metric": "hip_sway",
+    "cue_high_old": "Your hips slide away from the target. Turn around your trail hip instead of swaying.",
+    "cue_high": "Your hips slide away from the target. Turn around your back hip instead of sliding.",
+    "short_high": "Turn, don't slide"
+  },
+  {
+    "sport": "golf",
+    "view": null,
+    "metric": "shoulder_turn",
+    "cue_high_old": "Your shoulder turn is short. Rotate your back to the target.",
+    "cue_high": "Your shoulder turn is short. Turn your back fully to the target.",
+    "short_high": "Full shoulder turn"
+  },
+  {
+    "sport": "golf",
+    "view": null,
+    "metric": "finish_balance",
+    "cue_high_old": "You are finishing on your back foot. Get your weight onto your lead side.",
+    "cue_high": "You are falling onto your back foot. Get your weight onto your front foot to finish.",
+    "short_high": "Weight forward"
+  },
+  {
+    "sport": "basketball",
+    "view": null,
+    "metric": "leg_drive",
+    "cue_low_old": "Use your legs. Dip and rise so the shot starts from the ground.",
+    "cue_low": "Use your legs. Dip and rise so the power comes from the ground.",
+    "short_low": "Use your legs"
+  },
+  {
+    "sport": "basketball",
+    "view": null,
+    "metric": "elbow_extension",
+    "cue_low_old": "You are short-arming the release. Extend fully up through the ball.",
+    "cue_low": "Your arm isn't fully straight. Reach all the way up through the ball.",
+    "short_low": "Fully extend your arm"
+  },
+  {
+    "sport": "basketball",
+    "view": null,
+    "metric": "elbow_flare",
+    "cue_high_old": "Your elbow is flaring out. Tuck it under the ball, in line with your shoulder.",
+    "cue_high": "Your elbow is sticking out. Tuck it under the ball so it lines up with your shoulder.",
+    "short_high": "Tuck your elbow"
+  },
+  {
+    "sport": "basketball",
+    "view": null,
+    "metric": "release_height",
+    "cue_low_old": "You are releasing low. Shoot up, not out, and finish high.",
+    "cue_low": "You are pushing the ball out. Shoot up high and finish high.",
+    "short_low": "Shoot up, not out"
+  },
+  {
+    "sport": "basketball",
+    "view": null,
+    "metric": "arm_verticality",
+    "cue_high_old": "Your arm is finishing across your body. Finish straight toward the rim.",
+    "cue_high": "Your arm is crossing your body. Point straight at the rim when you finish.",
+    "short_high": "Finish straight ahead"
+  },
+  {
+    "sport": "basketball",
+    "view": null,
+    "metric": "follow_through_hold",
+    "cue_low_old": "Hold your follow-through until the ball reaches the rim.",
+    "cue_low": "Leave your hand up. Hold your follow-through until the ball reaches the rim.",
+    "short_low": "Hold your follow-through"
+  },
+  {
+    "sport": "basketball",
+    "view": null,
+    "metric": "lateral_drift",
+    "cue_high_old": "You are drifting sideways. Go straight up and land where you took off.",
+    "cue_high": "You are jumping sideways. Go straight up and land right where you started.",
+    "short_high": "Jump straight up"
+  },
+  {
+    "sport": "basketball",
+    "view": null,
+    "metric": "shot_rhythm",
+    "cue_low_old": "Your release is rushed after the dip. Let the legs finish first.",
+    "cue_low": "You are rushing the shot after the dip. Let your legs push up first.",
+    "short_low": "Legs push first",
+    "cue_high_old": "There is a hitch between your dip and your release. Make it one motion.",
+    "cue_high": "You are pausing before you shoot. Make your shot one smooth motion.",
+    "short_high": "One smooth motion"
+  },
+  {
+    "sport": "basketball",
+    "view": null,
+    "metric": "guide_hand_gap",
+    "cue_low_old": "Shoot with one hand. Keep your guide hand on the side of the ball and let only your shooting hand push it.",
+    "cue_low": "Shoot with one hand. Keep your other hand on the side, and only push with your shooting hand.",
+    "short_low": "Shoot with one hand"
+  },
+  {
+    "sport": "tennis",
+    "view": null,
+    "metric": "stance_height",
+    "cue_high_old": "Bend your knees more as you load. Power comes from the ground up.",
+    "cue_high": "Bend your knees more as you get ready. Power comes from your legs.",
+    "short_high": "Bend your knees"
+  },
+  {
+    "sport": "tennis",
+    "view": null,
+    "metric": "contact_arm",
+    "cue_low_old": "Reach up on your serve. Hit at full stretch above your hitting shoulder, not with a bent arm.",
+    "cue_low": "Keep your hitting arm straight when you hit the backhand or serve.",
+    "short_low": "Straight arm at contact"
+  },
+  {
+    "sport": "tennis",
+    "view": null,
+    "metric": "contact_height",
+    "cue_low_old": "You are meeting the ball too high. Let it drop into your strike zone.",
+    "cue_low": "You are hitting the ball too high. Let it drop down to a comfortable height.",
+    "short_low": "Let the ball drop",
+    "cue_high_old": "You are meeting the ball too low. Get under it with your legs, or reach up fully on serve.",
+    "cue_high": "You are hitting the ball too low. Bend your legs to get under it.",
+    "short_high": "Bend to get under"
+  },
+  {
+    "sport": "tennis",
+    "view": null,
+    "metric": "swing_through",
+    "cue_low_old": "You are cutting your swing short. Finish across your body.",
+    "cue_low": "You are stopping your swing early. Swing all the way across your body.",
+    "short_low": "Swing all the way"
+  },
+  {
+    "sport": "tennis",
+    "view": null,
+    "metric": "shoulder_turn",
+    "cue_high_old": "Turn earlier and fully: by the end of your take-back your shoulders should be sideways, with your non-hitting shoulder pointing at the ball.",
+    "cue_high": "Turn your shoulders more. Your chest should face the side fence before you swing.",
+    "short_high": "Turn your shoulders fully"
+  },
+  {
+    "sport": "tennis",
+    "view": null,
+    "metric": "head_stability",
+    "cue_high_old": "Your head is moving through the hit. Keep your eyes at the contact point.",
+    "cue_high": "Your head is moving. Look straight at the ball as you hit it.",
+    "short_high": "Watch the ball"
+  },
+  {
+    "sport": "tennis",
+    "view": null,
+    "metric": "swing_tempo",
+    "cue_low_old": "You are snatching at the ball. Smooth acceleration beats a late rush.",
+    "cue_low": "You are rushing your swing. Start smooth and speed up into the ball.",
+    "short_low": "Smooth swing speed",
+    "cue_high_old": "Your forward swing is slow. Accelerate through contact.",
+    "cue_high": "Your swing is too slow. Swing faster as you hit the ball.",
+    "short_high": "Swing faster"
+  },
+  {
+    "sport": "tennis",
+    "view": null,
+    "metric": "finish_height",
+    "cue_low_old": "Finish over your shoulder: keep swinging until the racket wraps up and over your opposite shoulder.",
+    "cue_low": "Keep swinging until your racket wraps up and over your opposite shoulder.",
+    "short_low": "Finish over your shoulder"
+  },
+  {
+    "sport": "tennis",
+    "view": null,
+    "metric": "elbow_finish",
+    "cue_low_old": "Finish with your hitting elbow up at nose height, pointing toward your target.",
+    "cue_low": "Lift your hitting elbow up to nose height at the finish, with the racket over your shoulder.",
+    "short_low": "Elbow up to nose"
+  },
+  {
+    "sport": "tennis",
+    "view": null,
+    "metric": "off_hand_reach",
+    "cue_low_old": "Use your other hand: reach it out toward the ball as you turn, to judge the space between you and the ball.",
+    "cue_low": "Reach your free hand out toward the ball. This helps you judge the distance.",
+    "short_low": "Reach your free hand"
+  },
+  {
+    "sport": "tennis",
+    "view": null,
+    "metric": "spacing",
+    "cue_low_old": "You're jammed: give yourself more room between your body and the ball.",
+    "cue_low": "The ball is too close to your body. Give yourself more room to swing.",
+    "short_low": "Give yourself room",
+    "cue_high_old": "You're reaching for the ball: move your feet so it comes to you.",
+    "cue_high": "You are reaching too far for the ball. Take small steps so it comes to you at a comfortable distance.",
+    "short_high": "Step closer to the ball"
+  },
+  {
+    "sport": "tennis",
+    "view": "back",
+    "metric": "stance_height",
+    "cue_high_old": "Bend your knees more as you load. Power comes from the ground up.",
+    "cue_high": "Bend your knees more as you get ready. Power comes from your legs.",
+    "short_high": "Bend your knees"
+  },
+  {
+    "sport": "tennis",
+    "view": "back",
+    "metric": "contact_arm",
+    "cue_low_old": "Reach up on your serve. Hit at full stretch above your hitting shoulder, not with a bent arm.",
+    "cue_low": "Keep your hitting arm straight when you hit the backhand or serve.",
+    "short_low": "Straight arm at contact"
+  },
+  {
+    "sport": "tennis",
+    "view": "back",
+    "metric": "contact_height",
+    "cue_low_old": "You are meeting the ball too high. Let it drop into your strike zone.",
+    "cue_low": "You are hitting the ball too high. Let it drop down to a comfortable height.",
+    "short_low": "Let the ball drop",
+    "cue_high_old": "You are meeting the ball too low. Get under it with your legs, or reach up fully on serve.",
+    "cue_high": "You are hitting the ball too low. Bend your legs to get under it.",
+    "short_high": "Bend to get under"
+  },
+  {
+    "sport": "tennis",
+    "view": "back",
+    "metric": "swing_through",
+    "cue_low_old": "You are cutting your swing short. Finish across your body.",
+    "cue_low": "You are stopping your swing early. Swing all the way across your body.",
+    "short_low": "Swing all the way"
+  },
+  {
+    "sport": "tennis",
+    "view": "back",
+    "metric": "shoulder_turn",
+    "cue_high_old": "Turn earlier and fully: by the end of your take-back your shoulders should be sideways, with your non-hitting shoulder pointing at the ball.",
+    "cue_high": "Turn your shoulders more. Your chest should face the side fence before you swing.",
+    "short_high": "Turn your shoulders fully"
+  },
+  {
+    "sport": "tennis",
+    "view": "back",
+    "metric": "swing_tempo",
+    "cue_low_old": "You are snatching at the ball. Smooth acceleration beats a late rush.",
+    "cue_low": "You are rushing your swing. Start smooth and speed up into the ball.",
+    "short_low": "Smooth swing speed",
+    "cue_high_old": "Your forward swing is slow. Accelerate through contact.",
+    "cue_high": "Your swing is too slow. Swing faster as you hit the ball.",
+    "short_high": "Swing faster"
+  },
+  {
+    "sport": "tennis",
+    "view": "back",
+    "metric": "finish_height",
+    "cue_low_old": "Finish over your shoulder: keep swinging until the racket wraps up and over your opposite shoulder.",
+    "cue_low": "Keep swinging until your racket wraps up and over your opposite shoulder.",
+    "short_low": "Finish over your shoulder"
+  },
+  {
+    "sport": "tennis",
+    "view": "back",
+    "metric": "elbow_finish",
+    "cue_low_old": "Finish with your hitting elbow up at nose height, pointing toward your target.",
+    "cue_low": "Lift your hitting elbow up to nose height at the finish, with the racket over your shoulder.",
+    "short_low": "Elbow up to nose"
+  },
+  {
+    "sport": "tennis",
+    "view": "back",
+    "metric": "off_hand_reach",
+    "cue_low_old": "Use your other hand: reach it out toward the ball as you turn, to judge the space between you and the ball.",
+    "cue_low": "Reach your free hand out toward the ball. This helps you judge the distance.",
+    "short_low": "Reach your free hand"
+  },
+  {
+    "sport": "tennis",
+    "view": "back",
+    "metric": "spacing",
+    "cue_low_old": "You're jammed: give yourself more room between your body and the ball.",
+    "cue_low": "The ball is too close to your body. Give yourself more room to swing.",
+    "short_low": "Give yourself room",
+    "cue_high_old": "You're reaching for the ball: move your feet so it comes to you.",
+    "cue_high": "You are reaching too far for the ball. Take small steps so it comes to you at a comfortable distance.",
+    "short_high": "Step closer to the ball"
+  },
+  {
+    "sport": "tennis",
+    "view": "side",
+    "metric": "contact_height",
+    "cue_low_old": "You are meeting the ball too high. Let it drop into your strike zone.",
+    "cue_low": "You are hitting the ball too high. Let it drop down to a comfortable height.",
+    "short_low": "Let the ball drop",
+    "cue_high_old": "You are meeting the ball too low. Get under it with your legs, or reach up fully on serve.",
+    "cue_high": "You are hitting the ball too low. Bend your legs to get under it.",
+    "short_high": "Bend to get under"
+  },
+  {
+    "sport": "tennis",
+    "view": "side",
+    "metric": "swing_tempo",
+    "cue_low_old": "You are snatching at the ball. Smooth acceleration beats a late rush.",
+    "cue_low": "You are rushing your swing. Start smooth and speed up into the ball.",
+    "short_low": "Smooth swing speed",
+    "cue_high_old": "Your forward swing is slow. Accelerate through contact.",
+    "cue_high": "Your swing is too slow. Swing faster as you hit the ball.",
+    "short_high": "Swing faster"
+  },
+  {
+    "sport": "tennis",
+    "view": "side",
+    "metric": "finish_height",
+    "cue_low_old": "Finish over your shoulder: keep swinging until the racket wraps up and over your opposite shoulder.",
+    "cue_low": "Keep swinging until your racket wraps up and over your opposite shoulder.",
+    "short_low": "Finish over your shoulder"
+  },
+  {
+    "sport": "tennis",
+    "view": "side",
+    "metric": "elbow_finish",
+    "cue_low_old": "Finish with your hitting elbow up at nose height, pointing toward your target.",
+    "cue_low": "Lift your hitting elbow up to nose height at the finish, with the racket over your shoulder.",
+    "short_low": "Elbow up to nose"
+  },
+  {
+    "sport": "tennis",
+    "view": "side",
+    "metric": "off_hand_reach",
+    "cue_low_old": "Use your other hand: reach it out toward the ball as you turn, to judge the space between you and the ball.",
+    "cue_low": "Reach your free hand out toward the ball. This helps you judge the distance.",
+    "short_low": "Reach your free hand"
+  },
+  {
+    "sport": "tennis",
+    "view": "side",
+    "metric": "contact_front",
+    "cue_low_old": "Make contact further in front of you, out ahead of your front foot.",
+    "cue_low": "Hit the ball further out in front of your leading foot.",
+    "short_low": "Hit out in front"
+  },
+  {
+    "sport": "tennis",
+    "view": "side",
+    "metric": "extension_through",
+    "cue_low_old": "Extend out toward your target through contact before wrapping to the finish.",
+    "cue_low": "Push your racket out toward the target before wrapping it around your body.",
+    "short_low": "Push toward the target"
+  },
+  {
+    "sport": "tennis",
+    "view": "side",
+    "metric": "back_load",
+    "cue_high_old": "Load your back leg on the take-back: sit your weight over your back foot.",
+    "cue_high": "Put your weight on your back foot as you bring the racket back.",
+    "short_high": "Weight on back foot"
+  },
+  {
+    "sport": "tennis",
+    "view": "side",
+    "metric": "weight_shift",
+    "cue_low_old": "Push off your back leg and move your weight onto your front leg through contact.",
+    "cue_low": "Push off your back leg and step your weight forward as you hit.",
+    "short_low": "Step your weight forward"
+  },
+  {
+    "sport": "tennis",
+    "view": "side",
+    "metric": "contact_arm",
+    "cue_low_old": "Fully extend your hitting arm at contact on the backhand and serve.",
+    "cue_low": "From the side, your hitting arm is bent at contact. Straighten it as you hit backhands and serves.",
+    "short_low": "Straight arm at contact"
+  },
+  {
+    "sport": "pickleball",
+    "view": null,
+    "metric": "stance_height",
+    "cue_high_old": "Stay lower. Bend your knees instead of bending at the waist.",
+    "cue_high": "Stay lower. Bend your knees instead of leaning over from your waist.",
+    "short_high": "Bend your knees"
+  },
+  {
+    "sport": "pickleball",
+    "view": null,
+    "metric": "ready_height",
+    "cue_high_old": "Your paddle is dropping between shots. Keep it up at chest height.",
+    "cue_high": "Your paddle is dropping. Keep it up near your chest between shots.",
+    "short_high": "Keep your paddle up"
+  },
+  {
+    "sport": "pickleball",
+    "view": null,
+    "metric": "backswing_size",
+    "cue_high_old": "Your backswing is too big. Keep the paddle in front of your body.",
+    "cue_high": "Your backswing is too big. Keep the paddle in front of your body.",
+    "short_high": "Compact backswing"
+  },
+  {
+    "sport": "pickleball",
+    "view": null,
+    "metric": "contact_arm",
+    "cue_low_old": "Reach up on your overhead. Hit at full stretch above your hitting shoulder, not with a bent arm.",
+    "cue_low": "Reach up on your overhead. Hit the ball as high as you can with a straight arm.",
+    "short_low": "Reach up higher"
+  },
+  {
+    "sport": "pickleball",
+    "view": null,
+    "metric": "contact_height",
+    "cue_low_old": "You are reaching up for balls you could let drop.",
+    "cue_low": "You are reaching up for balls. Let them drop down to your waist first.",
+    "short_low": "Let the ball drop",
+    "cue_high_old": "You are hitting from too low. Bend and lift with your legs.",
+    "cue_high": "You are hitting from too low. Bend your knees and lift up.",
+    "short_high": "Bend and lift"
+  },
+  {
+    "sport": "pickleball",
+    "view": null,
+    "metric": "swing_through",
+    "cue_low_old": "You are stabbing at the ball. Push through toward your target.",
+    "cue_low": "You are poking at the ball. Push your paddle forward toward your target.",
+    "short_low": "Push toward the target"
+  },
+  {
+    "sport": "pickleball",
+    "view": null,
+    "metric": "head_stability",
+    "cue_high_old": "Keep your head still and watch the ball onto the paddle.",
+    "cue_high": "Keep your head still and watch the ball hit your paddle.",
+    "short_high": "Watch the ball"
+  }
+]

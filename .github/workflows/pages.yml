@@ -44,6 +44,9 @@ jobs:
         run: npm run build
         env:
           BASE_PATH: /posture-correction/
+          # sign-up relay URL (relay/, see docs/SIGNUP_RELAY.md); set under Settings -> Secrets and variables
+          # -> Actions -> Variables as SIGNUP_URL. Empty keeps sign-ups closed.
+          VITE_SIGNUP_URL: ${{ vars.SIGNUP_URL }}
 
       - name: Add 404 fallback for deep links
         run: cp dist/index.html dist/404.html

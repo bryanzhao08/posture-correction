@@ -69,7 +69,9 @@
           "weight": 0.5,
           "source": "GolfDB pros (n=170)",
           "cue_low": "Your backswing is rushed. Take the club back slower and smoother.",
-          "cue_high": "Your downswing is quick relative to a slow backswing. Keep one smooth rhythm."
+          "cue_high": "Your downswing is too quick. Keep one smooth rhythm from back to front.",
+          "short_low": "Smooth backswing",
+          "short_high": "Smooth rhythm"
         },
         {
           "id": "lead_arm_top",
@@ -80,10 +82,11 @@
           "tol": 11.574,
           "weight": 0.5,
           "source": "GolfDB pros (n=170)",
-          "cue_low": "Your lead arm is collapsing at the top. Keep it long and wide.",
+          "cue_low": "Your lead arm is bending at the top. Keep it straight and push your hands away from you.",
           "cue_high": "",
           "one_sided": "low",
-          "note": "2D pose under-reads a straight arm; only arms more bent than the pros are penalised"
+          "note": "2D pose under-reads a straight arm; only arms more bent than the pros are penalised",
+          "short_low": "Straight lead arm"
         },
         {
           "id": "head_sway",
@@ -96,7 +99,8 @@
           "one_sided": "high",
           "source": "GolfDB pros (n=170)",
           "cue_low": "",
-          "cue_high": "Your head is drifting sideways. Keep it centred over the ball until impact."
+          "cue_high": "Your head is moving sideways. Keep it centered over the ball until you hit it.",
+          "short_high": "Keep head still"
         },
         {
           "id": "head_lift",
@@ -107,8 +111,10 @@
           "tol": 0.049,
           "weight": 0.8,
           "source": "GolfDB pros (n=170)",
-          "cue_low": "You are standing up through impact. Stay in your posture.",
-          "cue_high": "You are dipping down into the ball. Keep your height level."
+          "cue_low": "You are standing up as you hit. Stay bent over in your starting posture.",
+          "cue_high": "You are dropping your head down. Keep your height level.",
+          "short_low": "Stay down",
+          "short_high": "Don't dip down"
         },
         {
           "id": "hip_sway",
@@ -121,7 +127,8 @@
           "one_sided": "high",
           "source": "GolfDB pros (n=170)",
           "cue_low": "",
-          "cue_high": "Your hips slide away from the target. Turn around your trail hip instead of swaying."
+          "cue_high": "Your hips slide away from the target. Turn around your back hip instead of sliding.",
+          "short_high": "Turn, don't slide"
         },
         {
           "id": "shoulder_turn",
@@ -134,7 +141,8 @@
           "one_sided": "high",
           "source": "GolfDB pros (n=170)",
           "cue_low": "",
-          "cue_high": "Your shoulder turn is short. Rotate your back to the target."
+          "cue_high": "Your shoulder turn is short. Turn your back fully to the target.",
+          "short_high": "Full shoulder turn"
         },
         {
           "id": "finish_balance",
@@ -147,7 +155,8 @@
           "one_sided": "high",
           "source": "GolfDB pros (n=170)",
           "cue_low": "",
-          "cue_high": "You are finishing on your back foot. Get your weight onto your lead side."
+          "cue_high": "You are falling onto your back foot. Get your weight onto your front foot to finish.",
+          "short_high": "Weight forward"
         }
       ],
       "pattern": {
@@ -242,13 +251,14 @@
           "weight": 1.0,
           "one_sided": "low",
           "source": "SPL free throws (n=388)",
-          "cue_low": "Use your legs. Dip and rise so the shot starts from the ground.",
+          "cue_low": "Use your legs. Dip and rise so the power comes from the ground.",
           "cue_high": "",
           "height_shift": {
             "per_10cm": 0.03,
             "max_steps": 4,
             "about": "Coaching prior: +0.03 torso of expected leg drive per 10 cm under 175 cm."
-          }
+          },
+          "short_low": "Use your legs"
         },
         {
           "id": "elbow_extension",
@@ -260,8 +270,9 @@
           "weight": 1.2,
           "one_sided": "low",
           "source": "SPL free throws (n=388)",
-          "cue_low": "You are short-arming the release. Extend fully up through the ball.",
-          "cue_high": ""
+          "cue_low": "Your arm isn't fully straight. Reach all the way up through the ball.",
+          "cue_high": "",
+          "short_low": "Fully extend your arm"
         },
         {
           "id": "elbow_flare",
@@ -274,7 +285,8 @@
           "one_sided": "high",
           "source": "SPL free throws (n=388)",
           "cue_low": "",
-          "cue_high": "Your elbow is flaring out. Tuck it under the ball, in line with your shoulder."
+          "cue_high": "Your elbow is sticking out. Tuck it under the ball so it lines up with your shoulder.",
+          "short_high": "Tuck your elbow"
         },
         {
           "id": "release_height",
@@ -286,8 +298,9 @@
           "weight": 1.0,
           "one_sided": "low",
           "source": "SPL free throws (n=388)",
-          "cue_low": "You are releasing low. Shoot up, not out, and finish high.",
-          "cue_high": ""
+          "cue_low": "You are pushing the ball out. Shoot up high and finish high.",
+          "cue_high": "",
+          "short_low": "Shoot up, not out"
         },
         {
           "id": "arm_verticality",
@@ -300,7 +313,8 @@
           "one_sided": "high",
           "source": "SPL free throws (n=388)",
           "cue_low": "",
-          "cue_high": "Your arm is finishing across your body. Finish straight toward the rim."
+          "cue_high": "Your arm is crossing your body. Point straight at the rim when you finish.",
+          "short_high": "Finish straight ahead"
         },
         {
           "id": "follow_through_hold",
@@ -312,8 +326,9 @@
           "weight": 0.8,
           "one_sided": "low",
           "source": "SPL free throws (n=388)",
-          "cue_low": "Hold your follow-through until the ball reaches the rim.",
-          "cue_high": ""
+          "cue_low": "Leave your hand up. Hold your follow-through until the ball reaches the rim.",
+          "cue_high": "",
+          "short_low": "Hold your follow-through"
         },
         {
           "id": "lateral_drift",
@@ -326,7 +341,8 @@
           "one_sided": "high",
           "source": "SPL free throws (n=388)",
           "cue_low": "",
-          "cue_high": "You are drifting sideways. Go straight up and land where you took off."
+          "cue_high": "You are jumping sideways. Go straight up and land right where you started.",
+          "short_high": "Jump straight up"
         },
         {
           "id": "shot_rhythm",
@@ -337,8 +353,10 @@
           "tol": 0.024,
           "weight": 0.6,
           "source": "SPL free throws (n=388)",
-          "cue_low": "Your release is rushed after the dip. Let the legs finish first.",
-          "cue_high": "There is a hitch between your dip and your release. Make it one motion."
+          "cue_low": "You are rushing the shot after the dip. Let your legs push up first.",
+          "cue_high": "You are pausing before you shoot. Make your shot one smooth motion.",
+          "short_low": "Legs push first",
+          "short_high": "One smooth motion"
         },
         {
           "id": "guide_hand_gap",
@@ -350,8 +368,9 @@
           "weight": 0.8,
           "one_sided": "low",
           "source": "SPL free throws (n=388)",
-          "cue_low": "Shoot with one hand. Keep your guide hand on the side of the ball and let only your shooting hand push it.",
-          "cue_high": ""
+          "cue_low": "Shoot with one hand. Keep your other hand on the side, and only push with your shooting hand.",
+          "cue_high": "",
+          "short_low": "Shoot with one hand"
         }
       ],
       "pattern": {
@@ -455,7 +474,8 @@
           "one_sided": "high",
           "source": "THETIS experts (n=96)",
           "cue_low": "",
-          "cue_high": "Bend your knees more as you load. Power comes from the ground up."
+          "cue_high": "Bend your knees more as you get ready. Power comes from your legs.",
+          "short_high": "Bend your knees"
         },
         {
           "id": "contact_arm",
@@ -473,12 +493,13 @@
               "tol": 6
             }
           },
-          "cue_low": "Reach up on your serve. Hit at full stretch above your hitting shoulder, not with a bent arm.",
+          "cue_low": "Keep your hitting arm straight when you hit the backhand or serve.",
           "cue_high": "",
           "only_types": [
             "serve"
           ],
-          "note": "groundstroke extension is invisible face-on (arm points at the camera)"
+          "note": "groundstroke extension is invisible face-on (arm points at the camera)",
+          "short_low": "Straight arm at contact"
         },
         {
           "id": "contact_height",
@@ -496,8 +517,10 @@
               "tol": 0.15
             }
           },
-          "cue_low": "You are meeting the ball too high. Let it drop into your strike zone.",
-          "cue_high": "You are meeting the ball too low. Get under it with your legs, or reach up fully on serve."
+          "cue_low": "You are hitting the ball too high. Let it drop down to a comfortable height.",
+          "cue_high": "You are hitting the ball too low. Bend your legs to get under it.",
+          "short_low": "Let the ball drop",
+          "short_high": "Bend to get under"
         },
         {
           "id": "swing_through",
@@ -512,8 +535,9 @@
           "by_type": {
             "serve": null
           },
-          "cue_low": "You are cutting your swing short. Finish across your body.",
-          "cue_high": ""
+          "cue_low": "You are stopping your swing early. Swing all the way across your body.",
+          "cue_high": "",
+          "short_low": "Swing all the way"
         },
         {
           "id": "shoulder_turn",
@@ -529,7 +553,8 @@
             "serve": null
           },
           "cue_low": "",
-          "cue_high": "Turn earlier and fully: by the end of your take-back your shoulders should be sideways, with your non-hitting shoulder pointing at the ball."
+          "cue_high": "Turn your shoulders more. Your chest should face the side fence before you swing.",
+          "short_high": "Turn your shoulders fully"
         },
         {
           "id": "head_stability",
@@ -542,7 +567,8 @@
           "one_sided": "high",
           "source": "THETIS experts (n=96)",
           "cue_low": "",
-          "cue_high": "Your head is moving through the hit. Keep your eyes at the contact point."
+          "cue_high": "Your head is moving. Look straight at the ball as you hit it.",
+          "short_high": "Watch the ball"
         },
         {
           "id": "swing_tempo",
@@ -553,8 +579,10 @@
           "tol": 0.183,
           "weight": 0.5,
           "source": "THETIS experts (n=96)",
-          "cue_low": "You are snatching at the ball. Smooth acceleration beats a late rush.",
-          "cue_high": "Your forward swing is slow. Accelerate through contact."
+          "cue_low": "You are rushing your swing. Start smooth and speed up into the ball.",
+          "cue_high": "Your swing is too slow. Swing faster as you hit the ball.",
+          "short_low": "Smooth swing speed",
+          "short_high": "Swing faster"
         },
         {
           "label": "Finish over your shoulder",
@@ -567,10 +595,11 @@
           "by_type": {
             "serve": null
           },
-          "cue_low": "Finish over your shoulder: keep swinging until the racket wraps up and over your opposite shoulder.",
+          "cue_low": "Keep swinging until your racket wraps up and over your opposite shoulder.",
           "cue_high": "",
           "id": "finish_height",
-          "source": "THETIS experts (n=79)"
+          "source": "THETIS experts (n=79)",
+          "short_low": "Finish over your shoulder"
         },
         {
           "label": "Elbow at nose level at the finish",
@@ -583,10 +612,11 @@
           "by_type": {
             "serve": null
           },
-          "cue_low": "Finish with your hitting elbow up at nose height, pointing toward your target.",
+          "cue_low": "Lift your hitting elbow up to nose height at the finish, with the racket over your shoulder.",
           "cue_high": "",
           "id": "elbow_finish",
-          "source": "coach target: elbow at nose level (a coaching convention; Penn clips end before the full finish)"
+          "source": "coach target: elbow at nose level (a coaching convention; Penn clips end before the full finish)",
+          "short_low": "Elbow up to nose"
         },
         {
           "label": "Other hand out for spacing",
@@ -599,10 +629,11 @@
           "by_type": {
             "serve": null
           },
-          "cue_low": "Use your other hand: reach it out toward the ball as you turn, to judge the space between you and the ball.",
+          "cue_low": "Reach your free hand out toward the ball. This helps you judge the distance.",
           "cue_high": "",
           "id": "off_hand_reach",
-          "source": "THETIS experts (n=77)"
+          "source": "THETIS experts (n=77)",
+          "short_low": "Reach your free hand"
         },
         {
           "label": "Spacing from the ball",
@@ -614,10 +645,12 @@
           "by_type": {
             "serve": null
           },
-          "cue_low": "You're jammed: give yourself more room between your body and the ball.",
-          "cue_high": "You're reaching for the ball: move your feet so it comes to you.",
+          "cue_low": "The ball is too close to your body. Give yourself more room to swing.",
+          "cue_high": "You are reaching too far for the ball. Take small steps so it comes to you at a comfortable distance.",
           "id": "spacing",
-          "source": "THETIS experts (n=79)"
+          "source": "THETIS experts (n=79)",
+          "short_low": "Give yourself room",
+          "short_high": "Step closer to the ball"
         }
       ],
       "pattern": {
@@ -645,7 +678,8 @@
               "one_sided": "high",
               "source": "Penn Action tennis, back view (n=46)",
               "cue_low": "",
-              "cue_high": "Bend your knees more as you load. Power comes from the ground up."
+              "cue_high": "Bend your knees more as you get ready. Power comes from your legs.",
+              "short_high": "Bend your knees"
             },
             {
               "id": "contact_arm",
@@ -663,12 +697,13 @@
                   "tol": 7.154
                 }
               },
-              "cue_low": "Reach up on your serve. Hit at full stretch above your hitting shoulder, not with a bent arm.",
+              "cue_low": "Keep your hitting arm straight when you hit the backhand or serve.",
               "cue_high": "",
               "only_types": [
                 "serve"
               ],
-              "note": "groundstroke extension is invisible face-on (arm points at the camera)"
+              "note": "groundstroke extension is invisible face-on (arm points at the camera)",
+              "short_low": "Straight arm at contact"
             },
             {
               "id": "contact_height",
@@ -686,8 +721,10 @@
                   "tol": 0.115
                 }
               },
-              "cue_low": "You are meeting the ball too high. Let it drop into your strike zone.",
-              "cue_high": "You are meeting the ball too low. Get under it with your legs, or reach up fully on serve."
+              "cue_low": "You are hitting the ball too high. Let it drop down to a comfortable height.",
+              "cue_high": "You are hitting the ball too low. Bend your legs to get under it.",
+              "short_low": "Let the ball drop",
+              "short_high": "Bend to get under"
             },
             {
               "id": "swing_through",
@@ -702,8 +739,9 @@
               "by_type": {
                 "serve": null
               },
-              "cue_low": "You are cutting your swing short. Finish across your body.",
-              "cue_high": ""
+              "cue_low": "You are stopping your swing early. Swing all the way across your body.",
+              "cue_high": "",
+              "short_low": "Swing all the way"
             },
             {
               "id": "shoulder_turn",
@@ -719,7 +757,8 @@
                 "serve": null
               },
               "cue_low": "",
-              "cue_high": "Turn earlier and fully: by the end of your take-back your shoulders should be sideways, with your non-hitting shoulder pointing at the ball."
+              "cue_high": "Turn your shoulders more. Your chest should face the side fence before you swing.",
+              "short_high": "Turn your shoulders fully"
             },
             {
               "id": "swing_tempo",
@@ -730,8 +769,10 @@
               "tol": 0.235,
               "weight": 0.5,
               "source": "Penn Action tennis, back view (n=46)",
-              "cue_low": "You are snatching at the ball. Smooth acceleration beats a late rush.",
-              "cue_high": "Your forward swing is slow. Accelerate through contact."
+              "cue_low": "You are rushing your swing. Start smooth and speed up into the ball.",
+              "cue_high": "Your swing is too slow. Swing faster as you hit the ball.",
+              "short_low": "Smooth swing speed",
+              "short_high": "Swing faster"
             },
             {
               "label": "Finish over your shoulder",
@@ -744,10 +785,11 @@
               "by_type": {
                 "serve": null
               },
-              "cue_low": "Finish over your shoulder: keep swinging until the racket wraps up and over your opposite shoulder.",
+              "cue_low": "Keep swinging until your racket wraps up and over your opposite shoulder.",
               "cue_high": "",
               "id": "finish_height",
-              "source": "Penn Action tennis, back view (n=24)"
+              "source": "Penn Action tennis, back view (n=24)",
+              "short_low": "Finish over your shoulder"
             },
             {
               "label": "Elbow at nose level at the finish",
@@ -760,10 +802,11 @@
               "by_type": {
                 "serve": null
               },
-              "cue_low": "Finish with your hitting elbow up at nose height, pointing toward your target.",
+              "cue_low": "Lift your hitting elbow up to nose height at the finish, with the racket over your shoulder.",
               "cue_high": "",
               "id": "elbow_finish",
-              "source": "coach target: elbow at nose level (a coaching convention; Penn clips end before the full finish)"
+              "source": "coach target: elbow at nose level (a coaching convention; Penn clips end before the full finish)",
+              "short_low": "Elbow up to nose"
             },
             {
               "label": "Other hand out for spacing",
@@ -776,10 +819,11 @@
               "by_type": {
                 "serve": null
               },
-              "cue_low": "Use your other hand: reach it out toward the ball as you turn, to judge the space between you and the ball.",
+              "cue_low": "Reach your free hand out toward the ball. This helps you judge the distance.",
               "cue_high": "",
               "id": "off_hand_reach",
-              "source": "Penn Action tennis, back view (n=24)"
+              "source": "Penn Action tennis, back view (n=24)",
+              "short_low": "Reach your free hand"
             },
             {
               "label": "Spacing from the ball",
@@ -791,10 +835,12 @@
               "by_type": {
                 "serve": null
               },
-              "cue_low": "You're jammed: give yourself more room between your body and the ball.",
-              "cue_high": "You're reaching for the ball: move your feet so it comes to you.",
+              "cue_low": "The ball is too close to your body. Give yourself more room to swing.",
+              "cue_high": "You are reaching too far for the ball. Take small steps so it comes to you at a comfortable distance.",
               "id": "spacing",
-              "source": "Penn Action tennis, back view (n=24)"
+              "source": "Penn Action tennis, back view (n=24)",
+              "short_low": "Give yourself room",
+              "short_high": "Step closer to the ball"
             }
           ]
         },
@@ -817,8 +863,10 @@
                   "tol": 0.103
                 }
               },
-              "cue_low": "You are meeting the ball too high. Let it drop into your strike zone.",
-              "cue_high": "You are meeting the ball too low. Get under it with your legs, or reach up fully on serve."
+              "cue_low": "You are hitting the ball too high. Let it drop down to a comfortable height.",
+              "cue_high": "You are hitting the ball too low. Bend your legs to get under it.",
+              "short_low": "Let the ball drop",
+              "short_high": "Bend to get under"
             },
             {
               "id": "swing_tempo",
@@ -829,8 +877,10 @@
               "tol": 0.099,
               "weight": 0.5,
               "source": "Penn Action tennis, side view (n=75)",
-              "cue_low": "You are snatching at the ball. Smooth acceleration beats a late rush.",
-              "cue_high": "Your forward swing is slow. Accelerate through contact."
+              "cue_low": "You are rushing your swing. Start smooth and speed up into the ball.",
+              "cue_high": "Your swing is too slow. Swing faster as you hit the ball.",
+              "short_low": "Smooth swing speed",
+              "short_high": "Swing faster"
             },
             {
               "label": "Finish over your shoulder",
@@ -843,10 +893,11 @@
               "by_type": {
                 "serve": null
               },
-              "cue_low": "Finish over your shoulder: keep swinging until the racket wraps up and over your opposite shoulder.",
+              "cue_low": "Keep swinging until your racket wraps up and over your opposite shoulder.",
               "cue_high": "",
               "id": "finish_height",
-              "source": "Penn Action tennis, side view (n=51)"
+              "source": "Penn Action tennis, side view (n=51)",
+              "short_low": "Finish over your shoulder"
             },
             {
               "label": "Elbow at nose level at the finish",
@@ -859,10 +910,11 @@
               "by_type": {
                 "serve": null
               },
-              "cue_low": "Finish with your hitting elbow up at nose height, pointing toward your target.",
+              "cue_low": "Lift your hitting elbow up to nose height at the finish, with the racket over your shoulder.",
               "cue_high": "",
               "id": "elbow_finish",
-              "source": "coach target: elbow at nose level (a coaching convention; Penn clips end before the full finish)"
+              "source": "coach target: elbow at nose level (a coaching convention; Penn clips end before the full finish)",
+              "short_low": "Elbow up to nose"
             },
             {
               "label": "Other hand out for spacing",
@@ -875,10 +927,11 @@
               "by_type": {
                 "serve": null
               },
-              "cue_low": "Use your other hand: reach it out toward the ball as you turn, to judge the space between you and the ball.",
+              "cue_low": "Reach your free hand out toward the ball. This helps you judge the distance.",
               "cue_high": "",
               "id": "off_hand_reach",
-              "source": "Penn Action tennis, side view (n=51)"
+              "source": "Penn Action tennis, side view (n=51)",
+              "short_low": "Reach your free hand"
             },
             {
               "label": "Contact out in front",
@@ -891,10 +944,11 @@
               "by_type": {
                 "serve": null
               },
-              "cue_low": "Make contact further in front of you, out ahead of your front foot.",
+              "cue_low": "Hit the ball further out in front of your leading foot.",
               "cue_high": "",
               "id": "contact_front",
-              "source": "Penn Action tennis, side view (n=51)"
+              "source": "Penn Action tennis, side view (n=51)",
+              "short_low": "Hit out in front"
             },
             {
               "label": "Extend through the ball",
@@ -907,10 +961,11 @@
               "by_type": {
                 "serve": null
               },
-              "cue_low": "Extend out toward your target through contact before wrapping to the finish.",
+              "cue_low": "Push your racket out toward the target before wrapping it around your body.",
               "cue_high": "",
               "id": "extension_through",
-              "source": "Penn Action tennis, side view (n=51)"
+              "source": "Penn Action tennis, side view (n=51)",
+              "short_low": "Push toward the target"
             },
             {
               "label": "Load the back leg",
@@ -924,10 +979,11 @@
                 "serve": null
               },
               "cue_low": "",
-              "cue_high": "Load your back leg on the take-back: sit your weight over your back foot.",
+              "cue_high": "Put your weight on your back foot as you bring the racket back.",
               "id": "back_load",
               "source": "Penn Action tennis, side view (n=45)",
-              "note": "only measured with staggered feet; open-stance strokes load and rotate instead"
+              "note": "only measured with staggered feet; open-stance strokes load and rotate instead",
+              "short_high": "Weight on back foot"
             },
             {
               "label": "Transfer to the front leg",
@@ -940,11 +996,12 @@
               "by_type": {
                 "serve": null
               },
-              "cue_low": "Push off your back leg and move your weight onto your front leg through contact.",
+              "cue_low": "Push off your back leg and step your weight forward as you hit.",
               "cue_high": "",
               "id": "weight_shift",
               "source": "Penn Action tennis, side view (n=45)",
-              "note": "only measured with staggered feet; open-stance strokes load and rotate instead"
+              "note": "only measured with staggered feet; open-stance strokes load and rotate instead",
+              "short_low": "Step your weight forward"
             },
             {
               "id": "contact_arm",
@@ -962,14 +1019,15 @@
                   "tol": 12.344
                 }
               },
-              "cue_low": "Fully extend your hitting arm at contact on the backhand and serve.",
+              "cue_low": "From the side, your hitting arm is bent at contact. Straighten it as you hit backhands and serves.",
               "cue_high": "",
               "one_sided": "low",
               "only_types": [
                 "backhand",
                 "serve"
               ],
-              "note": "modern forehands contact with a bent elbow (about 100-130 deg, Reid et al. 2013), so only backhand and serve are judged"
+              "note": "modern forehands contact with a bent elbow (about 100-130 deg, Reid et al. 2013), so only backhand and serve are judged",
+              "short_low": "Straight arm at contact"
             }
           ]
         }
@@ -1196,7 +1254,8 @@
           "one_sided": "high",
           "source": "prior",
           "cue_low": "",
-          "cue_high": "Stay lower. Bend your knees instead of bending at the waist."
+          "cue_high": "Stay lower. Bend your knees instead of leaning over from your waist.",
+          "short_high": "Bend your knees"
         },
         {
           "id": "ready_height",
@@ -1209,7 +1268,8 @@
           "one_sided": "high",
           "source": "prior",
           "cue_low": "",
-          "cue_high": "Your paddle is dropping between shots. Keep it up at chest height."
+          "cue_high": "Your paddle is dropping. Keep it up near your chest between shots.",
+          "short_high": "Keep your paddle up"
         },
         {
           "id": "backswing_size",
@@ -1225,7 +1285,8 @@
             "overhead": null
           },
           "cue_low": "",
-          "cue_high": "Your backswing is too big. Keep the paddle in front of your body."
+          "cue_high": "Your backswing is too big. Keep the paddle in front of your body.",
+          "short_high": "Compact backswing"
         },
         {
           "id": "contact_arm",
@@ -1243,12 +1304,13 @@
               "tol": 6
             }
           },
-          "cue_low": "Reach up on your overhead. Hit at full stretch above your hitting shoulder, not with a bent arm.",
+          "cue_low": "Reach up on your overhead. Hit the ball as high as you can with a straight arm.",
           "cue_high": "",
           "only_types": [
             "overhead"
           ],
-          "note": "groundstroke extension is invisible face-on (arm points at the camera)"
+          "note": "groundstroke extension is invisible face-on (arm points at the camera)",
+          "short_low": "Reach up higher"
         },
         {
           "id": "contact_height",
@@ -1266,8 +1328,10 @@
               "tol": 0.15
             }
           },
-          "cue_low": "You are reaching up for balls you could let drop.",
-          "cue_high": "You are hitting from too low. Bend and lift with your legs."
+          "cue_low": "You are reaching up for balls. Let them drop down to your waist first.",
+          "cue_high": "You are hitting from too low. Bend your knees and lift up.",
+          "short_low": "Let the ball drop",
+          "short_high": "Bend and lift"
         },
         {
           "id": "swing_through",
@@ -1282,8 +1346,9 @@
           "by_type": {
             "overhead": null
           },
-          "cue_low": "You are stabbing at the ball. Push through toward your target.",
-          "cue_high": ""
+          "cue_low": "You are poking at the ball. Push your paddle forward toward your target.",
+          "cue_high": "",
+          "short_low": "Push toward the target"
         },
         {
           "id": "head_stability",
@@ -1296,7 +1361,8 @@
           "one_sided": "high",
           "source": "prior",
           "cue_low": "",
-          "cue_high": "Keep your head still and watch the ball onto the paddle."
+          "cue_high": "Keep your head still and watch the ball hit your paddle.",
+          "short_high": "Watch the ball"
         }
       ],
       "pattern": {
